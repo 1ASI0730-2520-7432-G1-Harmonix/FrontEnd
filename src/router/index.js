@@ -1,8 +1,8 @@
 ﻿import {createRouter, createWebHistory} from "vue-router";
 
-const LogInComponent = () => import('../shared/components/log-in.vue');
-const SignUpComponent = () => import('../shared/components/signup.vue');
-const ForgotPasswordComponent = () => import('../shared/components/forgot-password.vue');
+const LogInComponent = () => import('@/public/components/log-in.vue');
+const SignUpComponent = () => import('@/public/components/signup.vue');
+const ForgotPasswordComponent = () => import('@/public/components/forgot-password.vue');
 
 const routes = [
     { path: '/', component: LogInComponent },

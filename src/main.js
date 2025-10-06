@@ -7,13 +7,39 @@ import Aura from '@primeuix/themes/aura';
 
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Checkbox from 'primevue/checkbox';
-import Button from 'primevue/button';
-import Divider from 'primevue/divider';
-import Message from 'primevue/message';
+import {
+    Button,
+    Card,
+    Checkbox,
+    Column,
+    ConfirmationService,
+    ConfirmDialog,
+    DataTable,
+    Dialog,
+    DialogService,
+    Drawer,
+    FileUpload,
+    FloatLabel,
+    IconField,
+    InputIcon,
+    InputNumber,
+    InputText,
+    Password,
+    Menu,
+    Rating,
+    Row,
+    Select,
+    SelectButton,
+    Tag,
+    Textarea,
+    Toast,
+    ToastService,
+    Toolbar,
+    Divider,
+    Message
+} from "primevue";
 import router from "@/router/index.js";
+import i18n from "@/i18n.js";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -28,10 +54,13 @@ app.use(PrimeVue, {
     }
 });
 app.use(router);
+app.use(i18n);
 app.component('pv-inputtext', InputText).
 component('pv-password', Password ).
 component('pv-checkbox', Checkbox).
 component('pv-button', Button).
 component('pv-divider', Divider).
-component('pv-message', Message)
+component('pv-message', Message).
+component('pv-select-button', SelectButton)
+
 app.mount('#app');
