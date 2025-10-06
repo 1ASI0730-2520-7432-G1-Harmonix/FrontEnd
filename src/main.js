@@ -13,6 +13,7 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import Message from 'primevue/message';
+import router from "@/router/index.js";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -26,6 +27,7 @@ app.use(PrimeVue, {
         }
     }
 });
+app.use(router);
 app.component('pv-inputtext', InputText).
 component('pv-password', Password ).
 component('pv-checkbox', Checkbox).

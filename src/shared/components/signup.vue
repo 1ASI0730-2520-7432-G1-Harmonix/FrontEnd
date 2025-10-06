@@ -140,7 +140,7 @@ function signUp() {
 
         <p class="mt-4 text-600 text-center">
           Already have an account?
-          <a href="#" class="text-primary">Sign in</a>
+          <a href="#" class="text-primary"><router-link to="login">Sign in</router-link></a>
         </p>
       </div>
     </div>

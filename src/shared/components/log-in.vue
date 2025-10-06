@@ -73,7 +73,7 @@ function signIn() {
         <div class="field mb-2">
           <div class="flex align-items-center justify-content-between mb-2">
             <label for="password" class="mb-0">Password</label>
-            <a href="#" class="text-primary">Forgot password?</a>
+            <a href="#" class="text-primary"><router-link to="forgot-password">Forgot password?</router-link></a>
           </div>
           <Password
               id="password"
@@ -115,7 +115,7 @@ function signIn() {
 
         <p class="mt-4 text-600 text-center">
           Don’t have an account?
-          <a href="#" class="text-primary">Create one</a>
+          <a href="#" class="text-primary"><router-link to="signup">Create one</router-link></a>
         </p>
       </div>
     </div>

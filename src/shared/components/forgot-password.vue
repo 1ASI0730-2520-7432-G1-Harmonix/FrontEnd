@@ -131,7 +131,7 @@ onBeforeUnmount(() => clearInterval(timerId));
 
         <p class="mt-4 text-600 text-center">
           Remembered it?
-          <a href="#" class="text-primary">Back to sign in</a>
+          <a href="#" class="text-primary"><router-link to="login">Back to sign in</router-link></a>
         </p>
       </div>
     </div>
