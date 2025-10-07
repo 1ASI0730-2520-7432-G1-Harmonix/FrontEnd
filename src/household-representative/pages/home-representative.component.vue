@@ -11,6 +11,7 @@ const sidebarCollapsed = ref(false);
 
 const menuItems = [
   { label: 'Dashboard', icon: 'pi pi-home', route: '/dashboard/representative/' },
+  { label: 'Create Household', icon: 'pi pi-plus-circle', route: '/dashboard/representative/create-household' },
   { label: 'Members', icon: 'pi pi-users', route: '/dashboard/representative/members' },
   { label: 'Expenses', icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
   { label: 'Contributions', icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' },
