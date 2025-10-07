@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+﻿<script setup lang="js">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
@@ -23,6 +23,8 @@ async function signIn() {
     error.value = 'Please fill in your email and password.';
     return;
   }
+
+  console.log("email", email.value);
 
   try {
     // Find user by email
@@ -53,9 +55,9 @@ async function signIn() {
 
     // Redirect based on role
     if (user.role === 'representative') {
-      router.push({ name: 'representative-dashboard' });
+      await router.push({name: 'representative-dashboard'});
     } else {
-      router.push({ name: 'member-dashboard' });
+      await router.push({name: 'member-dashboard'});
     }
 
   } catch (err) {
