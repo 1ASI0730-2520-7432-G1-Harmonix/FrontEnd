@@ -28,11 +28,69 @@
       "householdId": "HOG-1759796571919"
     }
   ],
+  "settings":[
+    {
+      "id": "STT-124490",
+      "userId": 1759796571919,
+      "language": "ES",
+      "darkMode": true,
+      "notificationEnabled": false,
+      "createdAt": "2025-10-06T00:00:00.000Z",
+      "updatedAt": "2025-10-06T00:00:00.000Z"
+    }
+  ],
   "households": [
     {
       "id": "HOG-1759796571919",
       "representativeId": 1759796571919,
-      "createdAt": "2025-10-06T00:00:00.000Z"
+      "currency": 1,
+      "createdAt": "2025-10-07T00:00:00.000Z"
+    }
+  ],
+  "householdMember": [
+    {
+      "id": "HM-123393",
+      "userId": "1759798502697",
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    }
+  ],
+  "bills": [
+    {
+      "id": "BG-12212222",
+      "householdId": "HOG-1759796571919",
+      "description": "blablabliba",
+      "amount": "100.00",
+      "createdBy": 1759796571919,
+      "paymentDay": "2026-10-10T00:00:00.000Z",
+      "createdAt": "2025-10-09T00:00:00.000Z",
+      "updatedAt": "2025-10-09T00:00:00.000Z"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "CN-272818",
+      "billId": "BG-12212222",
+      "householdId": "HOG-1759796571919",
+      "description": "blablablu blablable",
+      "deadlineForMembers": "2026-09-09T00:00:00.000Z",
+      "strategy": 1,
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    }
+  ],
+  "memberContributions": [
+    {
+      "id": "MC-152672",
+      "contributionId": "CN-272818",
+      "memberId": "HM-123393",
+      "amount": "20.0",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
     }
   ]
 }
