@@ -1,0 +1,38 @@
+{
+  "users": [
+    {
+      "id": 1759796571919,
+      "name": "Jose",
+      "email": "admin@gmail.com",
+      "password": "123456789",
+      "role": "representative",
+      "status": "active",
+      "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1759798502697,
+      "name": "Jose",
+      "email": "admin@gmail.com",
+      "password": "Hola12345",
+      "role": "member",
+      "status": "active",
+      "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1759801172915,
+      "name": "Camilla",
+      "email": "example69@gmail.com",
+      "password": "Hola12345TY",
+      "role": "member",
+      "status": "active",
+      "householdId": "HOG-1759796571919"
+    }
+  ],
+  "households": [
+    {
+      "id": "HOG-1759796571919",
+      "representativeId": 1759796571919,
+      "createdAt": "2025-10-06T00:00:00.000Z"
+    }
+  ]
+}
