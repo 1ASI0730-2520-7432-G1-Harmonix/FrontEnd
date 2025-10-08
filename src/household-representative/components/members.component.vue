@@ -19,7 +19,8 @@ const showMemberDetailsDialog = ref(false);
 const selectedMember = ref(null);
 
 // Computed properties
-const filteredMembers = computed(() => return members.value.filter(member => member.role === 'member');
+const filteredMembers = computed(() => {
+  return members.value.filter(member => member.role === 'member');
 });
 
 // Methods
