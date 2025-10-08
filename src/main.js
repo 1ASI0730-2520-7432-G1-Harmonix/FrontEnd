@@ -21,13 +21,18 @@ import {
     Tag,
     Toolbar,
     Divider,
-    Message
+    Message, ProgressBar
 } from "primevue";
 import router from "@/router/index.js";
 import i18n from "@/i18n.js";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
+
+// Register PrimeVue Services
+app.use(ToastService);
+app.use(ConfirmationService);
+app.use(DialogService);
 
 app.use(PrimeVue, {
     theme: {
@@ -51,8 +56,11 @@ component('pv-dropdown', Dropdown).
 component('pv-datatable', DataTable).
 component('pv-column', Column).
 component('pv-dialog', Dialog).
-component('pv-tag', Tag).
+component('pv-toolbar', Toolbar).
+component('pv-progressbar', ProgressBar).
 component('pv-card', Card).
-component('pv-toolbar', Toolbar)
+component('pv-tag', Tag).
+component('pv-column', Column).
+component('pv-datatable', DataTable)
 
 app.mount('#app');
