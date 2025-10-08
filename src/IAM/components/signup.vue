@@ -1,4 +1,4 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
@@ -10,6 +10,7 @@ import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import Message from 'primevue/message';
 import RadioButton from 'primevue/radiobutton';
+import Dialog from 'primevue/dialog';
 
 const router = useRouter();
 const name = ref('');
@@ -23,6 +24,10 @@ const householdId = ref('');
 const error = ref('');
 const success = ref('');
 const generatedHouseholdId = ref('');
+
+// Plan selection modal
+const planDialogVisible = ref(false);
+const selectedPlan = ref('FREE'); // FREE | PREMIUM
 
 function validateEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -42,28 +47,28 @@ async function signUp() {
   success.value = '';
   generatedHouseholdId.value = '';
 
-  // Common validations
   if (!name.value.trim()) return (error.value = 'Please enter your name.');
   if (!validateEmail(email.value)) return (error.value = 'Enter a valid email address.');
   if (password.value.length < 8) return (error.value = 'Password must be at least 8 characters.');
   if (password.value !== confirm.value) return (error.value = 'Passwords do not match.');
-  
-  // Representative specific validation
+
   if (userType.value === 'representative' && !accept.value) {
     return (error.value = 'You must accept the Terms & Privacy Policy.');
   }
-  
-  // Member specific validation
+
   if (userType.value === 'member') {
     if (!householdId.value) {
       return (error.value = 'Please enter the Household ID.');
     }
     const isValid = await validateHouseholdId(householdId.value);
-    if (!isValid) {
-      return (error.value = 'Invalid Household ID. Please verify and try again.');
-    }
+    if (!isValid) return (error.value = 'Invalid Household ID. Please verify and try again.');
   }
 
+  // Show plan selection dialog
+  planDialogVisible.value = true;
+}
+
+async function confirmPlanAndCreate() {
   try {
     const userId = Date.now();
     let userData = {
@@ -72,39 +77,44 @@ async function signUp() {
       email: email.value,
       password: password.value,
       role: userType.value,
-      status: 'active'
+      status: 'active',
+      plan: selectedPlan.value
     };
 
     if (userType.value === 'representative') {
       const newHouseholdId = `HOG-${userId}`;
       userData.householdId = newHouseholdId;
-      
-      // Create household
+      userData.isNewUser = true;
+
       await httpInstance.post('/households', {
         id: newHouseholdId,
+        name: '',
+        description: '',
+        memberCount: 1,
+        startDate: new Date().toISOString(),
+        currency: 'USD',
         representativeId: userId,
         createdAt: new Date().toISOString()
       });
-      
+
       generatedHouseholdId.value = newHouseholdId;
     } else {
       userData.householdId = householdId.value;
+      userData.isNewUser = false;
     }
 
     const response = await httpInstance.post('/users', userData);
-    
     if (response.status === 201) {
+      planDialogVisible.value = false;
       if (userType.value === 'representative') {
         success.value = `Account created! Your Household ID is: ${generatedHouseholdId.value}. Save it to share with your household members.`;
       } else {
         success.value = 'Account created! You have been added to the household.';
       }
-      
-      setTimeout(() => {
-        router.push('/login');
-      }, 5000);
+      setTimeout(() => router.push('/login'), 3500);
     }
   } catch (err) {
+    planDialogVisible.value = false;
     error.value = err.response?.data?.message || 'Failed to create account. Please try again.';
   }
 }
@@ -119,11 +129,10 @@ async function signUp() {
             src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1200&auto=format&fit=crop"
             alt="signup hero"
             class="w-full border-round-2xl shadow-3"
-            style="max-width: 560px;"
         />
         <h2 class="mt-4 mb-2">Create your account</h2>
         <p class="text-600 line-height-3">
-          Join to access your dashboard, projects, and more—fast and secure.
+          Start free or go Premium any time.
         </p>
       </div>
     </div>
@@ -143,21 +152,11 @@ async function signUp() {
           <label class="block mb-2">Account Type</label>
           <div class="flex gap-4">
             <div class="flex align-items-center">
-              <RadioButton
-                id="representative"
-                v-model="userType"
-                value="representative"
-                name="userType"
-              />
+              <RadioButton id="representative" v-model="userType" value="representative" name="userType" />
               <label for="representative" class="ml-2">Household Representative</label>
             </div>
             <div class="flex align-items-center">
-              <RadioButton
-                id="member"
-                v-model="userType"
-                value="member"
-                name="userType"
-              />
+              <RadioButton id="member" v-model="userType" value="member" name="userType" />
               <label for="member" class="ml-2">Household Member</label>
             </div>
           </div>
@@ -211,12 +210,7 @@ async function signUp() {
           <label for="householdId" class="block mb-2">Household ID</label>
           <span class="p-input-icon-left w-full">
             <i class="pi pi-home" />
-            <InputText
-              id="householdId"
-              v-model="householdId"
-              placeholder="Enter the ID provided by your household representative"
-              class="w-full"
-            />
+            <InputText id="householdId" v-model="householdId" placeholder="Enter the ID provided by your household representative" class="w-full" />
           </span>
         </div>
 
@@ -242,13 +236,32 @@ async function signUp() {
 
         <p class="mt-4 text-600 text-center">
           Already have an account?
-          <a href="#" class="text-primary"><router-link to="login">Sign in</router-link></a>
+          <router-link class="text-primary" to="/login">Sign in</router-link>
         </p>
       </div>
     </div>
+
+    <!-- Plan selection dialog -->
+    <Dialog v-model:visible="planDialogVisible" modal :style="{ width: '34rem' }" header="Choose your plan">
+      <div class="flex flex-column gap-3">
+        <div class="flex align-items-center gap-3">
+          <RadioButton inputId="plan-free" value="FREE" v-model="selectedPlan" />
+          <label for="plan-free">Free — 1 household, up to 3 members</label>
+        </div>
+        <div class="flex align-items-center gap-3">
+          <RadioButton inputId="plan-premium" value="PREMIUM" v-model="selectedPlan" />
+          <label for="plan-premium">Premium — unlimited households and members</label>
+        </div>
+        <div class="flex justify-content-end gap-2 mt-3">
+          <Button label="Cancel" class="p-button-outlined" @click="planDialogVisible = false" />
+          <Button label="Continue" @click="confirmPlanAndCreate" />
+        </div>
+      </div>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
 :deep(img) { object-fit: cover; }
 </style>
+
