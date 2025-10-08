@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import membersService from '../services/members.service.js';
+import memberPipeline from '../services/member-assembler.service.js';
 import { MemberFilters } from '../models/member.model.js';
 import MembersTable from './members-table.vue';
 import MembersSearchBar from './members-search-bar.vue';
@@ -20,26 +20,7 @@ const selectedMember = ref(null);
 
 // Computed properties
 const filteredMembers = computed(() => {
-  let filtered = members.value;
-
-  // Filter by search term
-  if (filters.value.searchTerm) {
-    filtered = filtered.filter(member => 
-      member.name.toLowerCase().includes(filters.value.searchTerm.toLowerCase())
-    );
-  }
-
-  // Filter by status
-  if (filters.value.statusFilter) {
-    filtered = filtered.filter(member => member.status === filters.value.statusFilter);
-  }
-
-  // Filter by role
-  if (filters.value.roleFilter) {
-    filtered = filtered.filter(member => member.role === filters.value.roleFilter);
-  }
-
-  return filtered;
+  return members.value;
 });
 
 // Methods
@@ -52,21 +33,22 @@ async function loadMembers() {
   error.value = '';
   
   try {
-    members.value = await membersService.getHouseholdMembers();
+    members.value = await memberPipeline.processMemberData(filters.value);
   } catch (err) {
-    error.value = 'Error al cargar los miembros del hogar';
+    error.value = 'Error loading household members';
     console.error('Error loading members:', err);
   } finally {
     loading.value = false;
   }
 }
 
-function handleSearch() {
-  // The computed property will handle the filtering automatically
+async function handleSearch() {
+  await loadMembers();
 }
 
-function handleClearFilters() {
+async function handleClearFilters() {
   filters.value.clear();
+  await loadMembers();
 }
 
 function handleViewMember(member) {
@@ -78,16 +60,19 @@ function addNewMember() {
   showAddMemberDialog.value = true;
 }
 
-function handleUpdateSearchTerm(value) {
+async function handleUpdateSearchTerm(value) {
   filters.value.searchTerm = value;
+  await loadMembers();
 }
 
-function handleUpdateStatusFilter(value) {
+async function handleUpdateStatusFilter(value) {
   filters.value.statusFilter = value;
+  await loadMembers();
 }
 
-function handleUpdateRoleFilter(value) {
+async function handleUpdateRoleFilter(value) {
   filters.value.roleFilter = value;
+  await loadMembers();
 }
 </script>
 
