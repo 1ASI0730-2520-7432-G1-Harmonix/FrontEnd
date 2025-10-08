@@ -1,4 +1,4 @@
-<script setup lang="js">
+﻿<script setup lang="js">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
@@ -123,22 +123,22 @@ async function confirmPlanAndCreate() {
 <template>
   <div class="grid h-screen">
     <!-- Left side (visual/brand) -->
-    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground">
+    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground" style="background-color: white !important;">
       <div class="p-5 text-center">
         <img
-            src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1200&auto=format&fit=crop"
+            src="@/assets/logo.jpeg"
             alt="signup hero"
             class="w-full border-round-2xl shadow-3"
         />
-        <h2 class="mt-4 mb-2">Create your account</h2>
-        <p class="text-600 line-height-3">
+        <h2 class="mt-4 mb-2" style="color: black !important;">Create your account</h2>
+        <p class="text-600 line-height-3" style="color: black !important;">
           Start free or go Premium any time.
         </p>
       </div>
     </div>
 
     <!-- Right side (form) -->
-    <div class="col-12 md:col-6 flex align-items-center justify-content-center">
+    <div class="col-12 md:col-6 flex align-items-center justify-content-center" style="background-color: #2c3e50">
       <div class="w-full" style="max-width: 460px;">
         <div class="mb-4">
           <h1 class="m-0">Sign up</h1>
@@ -165,7 +165,7 @@ async function confirmPlanAndCreate() {
         <div class="field mb-3">
           <label for="name" class="block mb-2">Full name</label>
           <span class="p-input-icon-left w-full">
-            <i class="pi pi-user" />
+            <i class="pi pi-user"/>
             <InputText id="name" v-model="name" placeholder="Jane Doe" class="w-full" autocomplete="name" />
           </span>
         </div>
@@ -223,9 +223,10 @@ async function confirmPlanAndCreate() {
 
         <Button label="Create account" class="w-full" @click="signUp" />
 
-        <Divider align="center" type="dashed" class="my-4">
-          <b class="text-600">or</b>
-        </Divider>
+        <div class="custom-divider">
+          <span>or</span>
+        </div>
+
 
         <Button class="w-full mb-2" outlined>
           <i class="pi pi-google mr-2" /> Continue with Google
@@ -262,6 +263,33 @@ async function confirmPlanAndCreate() {
 </template>
 
 <style scoped>
+.custom-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.custom-divider::before,
+.custom-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px dashed #ccc; /* customize color or style */
+}
+
+.custom-divider::before {
+  margin-right: 1rem;
+}
+
+.custom-divider::after {
+  margin-left: 1rem;
+}
+
+.custom-divider span {
+  font-weight: 600;
+  color: white;
+}
+
 :deep(img) { object-fit: cover; }
 </style>
 
