@@ -170,12 +170,21 @@ async function removeMember(memberId) {
 
 
 
-.sidebar-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
-.logo { display:flex; align-items:center; gap:.75rem; cursor:pointer; font-weight:700; color:#f5f7ff; font-size:1.1rem; }
+.sidebar-header {
+  display:flex;
+  align-items:center; justify-content:space-between; padding:12px 16px; }
+.logo {
+  display:flex;
+  align-items:center;
+  gap: 0.75rem;
+  cursor:pointer;
+  font-weight:700; color:#f5f7ff; font-size:1.1rem; }
 .toggle-btn { color:#f5f7ff; }
 
-.user-profile { display:flex; align-items:center; gap:1rem; padding:10px 16px; }
-.user-profile img { width:46px; height:46px; border-radius:50%; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
+.user-profile { display:flex; align-items:center;
+  gap:1rem; padding:10px 16px; }
+.user-profile img { width:46px; height:46px; border-radius:50%;
+  object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
 .user-profile h4 { margin:0; font-size:1rem; }
 .user-profile p { margin:0; font-size:.85rem; color:#d6def8; opacity:.85; }
 

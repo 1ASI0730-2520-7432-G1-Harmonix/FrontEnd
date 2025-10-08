@@ -8,17 +8,16 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import LanguageSwitcher from '@/shared/components/language-switcher.vue'
 import { useI18n } from 'vue-i18n'
-import { SettingsApi } from '@/settings/infrastructure/settings-api.js'
+
+// use the Service layer from the fixed code
+import { SettingsService } from '@/settings/infrastructure/settings-service.js'
 
 const { t, locale } = useI18n()
 
-// One service instance
-const service = new SettingsApi()
-
-// Safe defaults to avoid spreading null/undefined
+// Safe defaults
 const defaultSettings = {
-  id: '',                   // settings record id (if your API returns one)
-  userId: '',               // who owns these settings
+  id: '',
+  userId: 0,                               // number
   language: locale.value || 'en',
   darkMode: false,
   notificationEnabled: true,
@@ -33,9 +32,7 @@ const saving = ref(false)
 const success = ref('')
 const error = ref('')
 
-const displayLocale = computed(() =>
-    (locale.value || form.value.language || '').toUpperCase()
-)
+const displayLocale = computed(() => (locale.value || form.value.language || '').toUpperCase())
 
 function applyDarkMode(flag) {
   document.documentElement.classList.toggle('dark', !!flag)
@@ -49,28 +46,24 @@ function formatDate(iso) {
   }
 }
 
-const isDirty = computed(
-    () => JSON.stringify(form.value) !== JSON.stringify(lastSaved.value)
-)
+const isDirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(lastSaved.value))
 
 onMounted(async () => {
   try {
     const userData = localStorage.getItem('user')
     if (!userData) throw new Error('There is no user data!')
 
-    const userId = JSON.parse(userData).id;
+    const parsed = JSON.parse(userData)
+    const userId = Number(parsed?.id ?? 0)
+    if (!userId) throw new Error('User id is invalid')
 
-    console.log("UserId:",userId)
-
-    // Load settings by user id (adjust if API expects another key)
-    const loaded = await service.getByUserId(userId)
+    // Load settings by user id
+    const loaded = await SettingsService.getSettingsByUserId(userId).catch(() => null)
 
     // If nothing came back, hydrate from defaults with userId
     const settings = loaded ?? { ...defaultSettings, userId }
 
     form.value = { ...settings }
-    console.log('Form:',form.value.data[0].id);
-    console.log("ID:", form.value.id);
     lastSaved.value = { ...settings }
 
     // sync i18n locale & dark mode
@@ -88,15 +81,25 @@ async function save() {
   saving.value = true
 
   try {
-    // Apply language from the switcher to be persisted
+    // Persist the currently selected language
     form.value.language = locale.value
     form.value.updatedAt = new Date().toISOString()
+
     let saved
     if (form.value.id) {
-      console.log("Id:",form.value.id)
-      saved = await service.update(form.value.id, form.value)
+      // Update existing
+      saved = await SettingsService.updateSettings(form.value.id, {
+        ...form.value,
+        // ensure numeric id types
+        userId: Number(form.value.userId || 0),
+      })
     } else {
-      saved = await service.create(form.value)
+      // Create new
+      saved = await SettingsService.createSettings({
+        ...form.value,
+        userId: Number(form.value.userId || 0),
+        createdAt: form.value.createdAt || new Date().toISOString(),
+      })
     }
 
     // Refresh local state with authoritative server copy
@@ -126,17 +129,32 @@ function reset() {
 
 <template>
   <div class="settings-home">
-    <div class="mb-4 flex align-items-center justify-content-between">
-      <div>
-        <h2 class="m-0">{{ $t('settings.title') }}</h2>
-        <p class="mt-1 text-600">{{ $t('settings.subtitle') }}</p>
-      </div>
-      <div class="flex gap-2">
-        <Tag value="User" icon="pi pi-user" />
-        <Tag severity="info" :value="`ID: ${form.value.userId || '—'}`" />
-        <Tag severity="secondary" :value="form.value.id || '—'" />
+
+    <div class="welcome-card border-round mb-3">
+      <div class="flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h2 class="title m-0">{{ $t('settings.title') }}</h2>
+          <p class="subtitle mt-2 mb-0">{{ $t('settings.subtitle') }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <Tag value="User" icon="pi pi-user" />
+          <Tag severity="info" :value="`ID: ${form.userId || '—'}`" />
+          <Tag severity="secondary" :value="form.id || '—'" />
+        </div>
       </div>
     </div>
+
+<!--    <div class="mb-4 flex align-items-center justify-content-between">-->
+<!--      <div>-->
+<!--        <h2 class="m-0">{{ $t('settings.title') }}</h2>-->
+<!--        <p class="mt-1 text-600">{{ $t('settings.subtitle') }}</p>-->
+<!--      </div>-->
+<!--      <div class="flex gap-2">-->
+<!--        <Tag value="User" icon="pi pi-user" />-->
+<!--        <Tag severity="info" :value="`ID: ${form.userId || '—'}`" />-->
+<!--        <Tag severity="secondary" :value="form.id || '—'" />-->
+<!--      </div>-->
+<!--    </div>-->
 
     <div class="grid">
       <!-- Preferences Section -->
@@ -155,7 +173,6 @@ function reset() {
               <div class="field col-12 md:col-6">
                 <label class="mb-2 block">{{ $t('settings.dark_mode') }}</label>
                 <div class="flex align-items-center gap-3">
-                  <!-- Enabled so user can toggle; persist on Save -->
                   <InputSwitch v-model="form.darkMode" inputId="dark-mode" />
                   <label for="dark-mode" class="m-0">{{ form.darkMode ? 'On' : 'Off' }}</label>
                 </div>
@@ -231,6 +248,14 @@ function reset() {
 </template>
 
 <style scoped>
+.welcome-card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  padding: 1.25rem 1.5rem;
+}
+.welcome-card .title { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+.welcome-card .subtitle { color: #6b7280; }
 .my-custom-card {
   background-color: #2c3e50;
 }

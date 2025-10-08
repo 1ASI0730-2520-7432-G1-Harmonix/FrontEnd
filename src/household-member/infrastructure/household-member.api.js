@@ -1,9 +1,9 @@
 ﻿import httpInstance from "@/shared/services/http.instance.js";
 
-const resourceEndpoint = import.meta.env.VITE_SETTINGS_ENDPOINT_PATH;
+const resourceEndpoint = import.meta.env.VITE_HOUSEHOLD_MEMBER_PATH;
 
-export const SettingsApi = {
-    resourceEndpoint, // expose for consistency if needed elsewhere
+export const HouseholdMemberApi = {
+    resourceEndpoint,
 
     async getAll() {
         const { data } = await httpInstance.get(resourceEndpoint);
@@ -12,13 +12,19 @@ export const SettingsApi = {
 
     async getById(id) {
         const { data } = await httpInstance.get(`${resourceEndpoint}/${id}`);
-        return data; // expect a single object
+        return data ?? null;
     },
 
+    // GET /householdMembers?userId=123  → usually returns an array
     async getByUserId(userId) {
         const { data } = await httpInstance.get(`${resourceEndpoint}?userId=${encodeURIComponent(userId)}`);
-        // If your backend returns an array for queries, pick first; otherwise return object.
-        return Array.isArray(data) ? data[0] ?? null : data ?? null;
+        return Array.isArray(data) ? data : (data ?? []);
+    },
+
+    // GET /householdMembers?householdId=HOG-xxx → array
+    async getByHouseholdId(householdId) {
+        const { data } = await httpInstance.get(`${resourceEndpoint}?householdId=${encodeURIComponent(householdId)}`);
+        return Array.isArray(data) ? data : (data ?? []);
     },
 
     async create(resource) {

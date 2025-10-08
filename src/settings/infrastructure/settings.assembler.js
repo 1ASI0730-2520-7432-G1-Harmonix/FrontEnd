@@ -1,28 +1,27 @@
-﻿import {Settings} from "@/settings/domain/models/settings.entity.js";
+﻿import { Settings } from "@/settings/domain/models/settings.entity.js";
 
-export function toEntity(resource) {
-    if(!dto || typeof dto !== 'object')  return new Settings();
+export function toEntity(dto = {}) {
+    if (!dto || typeof dto !== "object") return new Settings({});
     return new Settings({
-        id: resource.id,
-        userId: resource.userId,
-        language: resource.language,
-        darkMode: resource.darkMode,
-        notificationEnabled: resource.role,
-        createdAt: resource.createdAt,
-        updatedAt: resource.updatedAt,
+        id: dto.id ?? "",
+        userId: typeof dto.userId === 'string' ? Number(dto.userId) : (dto.userId ?? 0),
+        language: dto.language ?? "",
+        darkMode: Boolean(dto.darkMode),
+        notificationEnabled: Boolean(dto.notificationEnabled),
+        createdAt: dto.createdAt ?? "",
+        updatedAt: dto.updatedAt ?? "",
     });
 }
 
-
 export function toDTO(entity) {
-    if(!entity) return {};
+    if (!entity) return {};
     return {
         id: entity.id,
-        userId: (entity.userId || '').trim(),
-        language: (entity.language || '').trim(),
-        darkMode: (entity.darkMode || '').trim(),
-        notificationEnabled: (entity.notificationEnabled || '').trim(),
-        createdAt: (entity.createdAt || '').trim(),
-        updatedAt: entity.updatedAt,
-    }
+        userId: entity.userId,               // number
+        language: entity.language,           // string
+        darkMode: Boolean(entity.darkMode),  // boolean
+        notificationEnabled: Boolean(entity.notificationEnabled), // boolean
+        createdAt: entity.createdAt,         // string/ISO
+        updatedAt: entity.updatedAt,         // string/ISO
+    };
 }

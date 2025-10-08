@@ -74,7 +74,7 @@ function exportCSV () {
 
 <template>
   <div class="page">
-    <!-- 🔒 contenedor propio (no dependemos del Card) -->
+    <!-- contenedor propio (no dependemos del Card) -->
     <div class="content-card">
       <div class="header">
         <h2 class="title">Estado del hogar</h2>
