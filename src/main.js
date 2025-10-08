@@ -4,7 +4,7 @@ import App from './App.vue';
 
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
-
+import {$t} from '@primeuix/styled';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 import {
@@ -39,7 +39,7 @@ import {
     Message
 } from "primevue";
 import router from "@/router/index.js";
-import i18n from "@/i18n.js";
+import i18n, {setUpLocalePersistence} from "@/i18n.js";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -62,5 +62,7 @@ component('pv-button', Button).
 component('pv-divider', Divider).
 component('pv-message', Message).
 component('pv-select-button', SelectButton)
+
+setUpLocalePersistence();
 
 app.mount('#app');

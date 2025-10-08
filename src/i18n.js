@@ -3,7 +3,6 @@
 import es from './locales/es.json'
 import en from './locales/en.json'
 import {isRef, watch} from "vue";
-import {value} from "@primeuix/themes/dist/aura/knob/index.js";
 
 const STORAGE_KEY = 'app:locale';
 

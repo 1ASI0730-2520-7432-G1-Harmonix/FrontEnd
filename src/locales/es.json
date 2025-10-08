@@ -1,1 +1,14 @@
-{}
+{
+  "settings": {
+    "title": "Configuracion de Cuenta",
+    "subtitle": "Personaliza tus preferencias y opciones a nivel de cuenta",
+    "preferences": "Preferencias",
+    "language": "Lenguaje",
+    "dark_mode": "Modo Oscuro",
+    "email_notifications": "Notificaciones de Correo",
+    "created_at": "Creado:",
+    "last_updated": "Ultima actualización:",
+    "summary": "Resumen",
+    "notifications": "Notificaciones"
+  }
+}

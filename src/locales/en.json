@@ -1,1 +1,14 @@
-{}
+{
+  "settings": {
+    "title": "Account Settings",
+    "subtitle": "Manage your preferences and account-level options",
+    "preferences": "Preferences",
+    "language": "Language",
+    "dark_mode": "Dark Mode",
+    "email_notifications": "Email Notifications",
+    "created_at": "Created:",
+    "last_updated": "Last Updated:",
+    "summary": "Summary",
+    "notifications": "Notifications"
+  }
+}
