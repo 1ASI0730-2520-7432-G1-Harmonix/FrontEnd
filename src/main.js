@@ -21,7 +21,11 @@ import {
     Tag,
     Toolbar,
     Divider,
-    Message, ProgressBar
+    Message,
+    ProgressBar,
+    ToastService,
+    ConfirmationService,
+    DialogService
 } from "primevue";
 import router from "@/router/index.js";
 import i18n from "@/i18n.js";
