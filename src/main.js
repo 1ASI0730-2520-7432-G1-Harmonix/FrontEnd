@@ -44,6 +44,11 @@ import i18n, {setUpLocalePersistence} from "@/i18n.js";
 
 const app = createApp(App);
 
+// Register PrimeVue Services
+app.use(ToastService);
+app.use(ConfirmationService);
+app.use(DialogService);
+
 app.use(PrimeVue, {
     theme: {
         preset: Aura,
