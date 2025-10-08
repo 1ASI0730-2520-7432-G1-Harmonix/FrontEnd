@@ -26,6 +26,24 @@
       "role": "member",
       "status": "active",
       "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1759801172916,
+      "name": "Valery Guevara",
+      "email": "valery.guevara@gmail.com",
+      "password": "Hola12345TY",
+      "role": "member",
+      "status": "invited",
+      "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1759801172917,
+      "name": "Dayana Acuña",
+      "email": "dayana.acuna@gmail.com",
+      "password": "Hola12345TY",
+      "role": "representative",
+      "status": "active",
+      "householdId": "HOG-1759796571919"
     }
   ],
   "settings":[
@@ -51,6 +69,30 @@
     {
       "id": "HM-123393",
       "userId": 1759798502697,
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-123394",
+      "userId": "1759801172915",
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-123395",
+      "userId": "1759801172916",
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-123396",
+      "userId": "1759801172917",
       "householdId": "HOG-1759796571919",
       "joinedAt": "2025-10-08T00:00:00.000Z",
       "createdAt": "2025-10-08T00:00:00.000Z",
@@ -87,6 +129,46 @@
       "contributionId": "CN-272818",
       "memberId": "HM-123393",
       "amount": "20.0",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152673",
+      "contributionId": "CN-272819",
+      "memberId": "HM-123394",
+      "amount": "100.00",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152674",
+      "contributionId": "CN-272820",
+      "memberId": "HM-123395",
+      "amount": "67.90",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152675",
+      "contributionId": "CN-272821",
+      "memberId": "HM-123396",
+      "amount": "450.00",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152676",
+      "contributionId": "CN-272822",
+      "memberId": "HM-123393",
+      "amount": "226.30",
       "status": 1,
       "payedAt": "2026-08-08T00:00:00.000Z",
       "createdAt": "2025-10-08T00:00:00.000Z",

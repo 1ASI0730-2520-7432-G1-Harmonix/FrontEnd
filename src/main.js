@@ -12,28 +12,13 @@ import {
     Card,
     Checkbox,
     Column,
-    ConfirmationService,
-    ConfirmDialog,
     DataTable,
     Dialog,
-    DialogService,
-    Drawer,
-    FileUpload,
-    FloatLabel,
-    IconField,
-    InputIcon,
-    InputNumber,
+    Dropdown,
     InputText,
     Password,
-    Menu,
-    Rating,
-    Row,
-    Select,
     SelectButton,
     Tag,
-    Textarea,
-    Toast,
-    ToastService,
     Toolbar,
     Divider,
     Message, ProgressBar
@@ -67,6 +52,11 @@ component('pv-button', Button).
 component('pv-divider', Divider).
 component('pv-message', Message).
 component('pv-select-button', SelectButton).
+component('pv-dropdown', Dropdown).
+component('pv-datatable', DataTable).
+component('pv-column', Column).
+component('pv-dialog', Dialog).
+component('pv-toolbar', Toolbar).
 component('pv-progressbar', ProgressBar).
 component('pv-card', Card).
 component('pv-tag', Tag).
