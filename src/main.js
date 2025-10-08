@@ -36,7 +36,7 @@ import {
     ToastService,
     Toolbar,
     Divider,
-    Message
+    Message, ProgressBar
 } from "primevue";
 import router from "@/router/index.js";
 import i18n from "@/i18n.js";
@@ -61,6 +61,11 @@ component('pv-checkbox', Checkbox).
 component('pv-button', Button).
 component('pv-divider', Divider).
 component('pv-message', Message).
-component('pv-select-button', SelectButton)
+component('pv-select-button', SelectButton).
+component('pv-progressbar', ProgressBar).
+component('pv-card', Card).
+component('pv-tag', Tag).
+component('pv-column', Column).
+component('pv-datatable', DataTable)
 
 app.mount('#app');
