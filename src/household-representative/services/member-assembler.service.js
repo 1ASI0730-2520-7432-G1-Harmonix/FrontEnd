@@ -54,21 +54,19 @@ class MemberAssembler {
   async assembleHouseholdMembers() {
     const userData = JSON.parse(localStorage.getItem('user'));
     this.validator.validateHouseholdData(userData);
-    
-    // Step 2: Fetch all required data
+
     const [usersResponse, contributionsResponse, householdMembersResponse] = await Promise.all([
       this.fetcher.fetchUsers(userData.householdId),
       this.fetcher.fetchContributions(),
       this.fetcher.fetchHouseholdMembers(userData.householdId)
     ]);
-    
-    // Step 3: Process and assemble data
+
     const users = usersResponse.data;
     const allContributions = contributionsResponse.data;
     const householdMembers = householdMembersResponse.data;
     
     return users.map(user => {
-      const householdMember = householdMembers.find(hm => hm.userId == user.id);
+      const householdMember = householdMembers.find(hm => hm.userId === user.id);
       const totalContributed = this.processor.calculateTotalContributions(
         householdMember?.id, 
         allContributions
@@ -79,7 +77,6 @@ class MemberAssembler {
   }
 }
 
-// 3. FILTER PROCESSOR (Handles filtering operations)
 class MemberFilterProcessor {
   applyFilters(members, filters) {
     return members.filter(member => {
@@ -97,7 +94,6 @@ class MemberFilterProcessor {
   }
 }
 
-// 4. PIPELINE PROCESSOR (Handles complete data flow)
 class MemberPipeline {
   constructor() {
     this.assembler = new MemberAssembler();
@@ -106,10 +102,8 @@ class MemberPipeline {
   
   async processMemberData(filters = null) {
     try {
-      // Step 1: Assemble raw member data
       const members = await this.assembler.assembleHouseholdMembers();
-      
-      // Step 2: Apply filters if provided
+
       if (filters) {
         return this.filterProcessor.applyFilters(members, filters);
       }
