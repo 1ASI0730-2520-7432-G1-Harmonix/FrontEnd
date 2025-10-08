@@ -18,6 +18,7 @@ import {
     Dialog,
     DialogService,
     Drawer,
+    Dropdown,
     FileUpload,
     FloatLabel,
     IconField,
@@ -61,6 +62,13 @@ component('pv-checkbox', Checkbox).
 component('pv-button', Button).
 component('pv-divider', Divider).
 component('pv-message', Message).
-component('pv-select-button', SelectButton)
+component('pv-select-button', SelectButton).
+component('pv-dropdown', Dropdown).
+component('pv-datatable', DataTable).
+component('pv-column', Column).
+component('pv-dialog', Dialog).
+component('pv-tag', Tag).
+component('pv-card', Card).
+component('pv-toolbar', Toolbar)
 
 app.mount('#app');
