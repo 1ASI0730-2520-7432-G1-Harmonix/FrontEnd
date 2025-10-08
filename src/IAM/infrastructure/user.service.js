@@ -21,6 +21,7 @@ export class UserService {
         try {
             const dto = await UserApi.getById(id);
             if(!dto) throw new Error(`Wasnt able to find a user with id ${id}`);
+            return toEntity(dto);
         }catch (error){
             console.error('Error fetching User: ',error);
             throw new Error(error.message || 'We are not able to obtain the user');
@@ -35,6 +36,7 @@ export class UserService {
         try {
             const dto = await UserApi.getByEmail(email);
             if(!dto) throw new Error(`Wasnt able to find a user with email ${email}`);
+            return toEntity(dto);
         }catch (error){
             console.error('Error fetching User: ',error);
             throw new Error(error.message || 'We are not able to obtain the user');

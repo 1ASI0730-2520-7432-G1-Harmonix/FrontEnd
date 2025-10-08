@@ -90,8 +90,8 @@ async function deleteHousehold(household) {
 
 <template>
   <div class="card">
-    <div class="flex justify-content-between align-items-center mb-4">
-      <h2>Hogares</h2>
+    <div class="flex justify-content-between align-items-center mb-4 border-round secondary-card">
+      <h2 style="color: black !important;">Hogares</h2>
       <Button label="Crear hogar" icon="pi pi-plus" @click="newHousehold" :disabled="!canCreate" />
     </div>
 
@@ -145,11 +145,22 @@ async function deleteHousehold(household) {
 </template>
 
 <style scoped>
+
+.secondary-card{
+  padding: 1.25rem 1.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
 .card {
   background: var(--surface-card);
   padding: 2rem;
   border-radius: 10px;
   margin-bottom: 1rem;
+}
+
+::v-deep(.households-table .p-datatable-tbody > tr > td) {
+  color: black;
 }
 
 /* Households table — modern soft look */

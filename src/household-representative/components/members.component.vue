@@ -37,7 +37,7 @@ const blankForm = {
   id: "",
   userId: 0,
   householdId: "",
-  joinedAt: new Date().toISOString(),
+  joinedAt: new Date(),
   createdAt: "",
   updatedAt: "",
 };
@@ -80,48 +80,57 @@ async function load() {
 
 function openCreate() {
   dialogMode.value = "create";
+  // prefer the actual householdId you're using in load():
+  const userData = localStorage.getItem("user");
+  const parsed = userData ? JSON.parse(userData) : {};
+  const householdIdAux = parsed?.householdId || householdId.value || "";
+
   form.value = {
     ...blankForm,
-    householdId: householdId.value,
-    joinedAt: new Date().toISOString(),
+    householdId: householdIdAux,
+    joinedAt: new Date(),
   };
   showDialog.value = true;
 }
 
 function openEdit(row) {
   dialogMode.value = "edit";
-  form.value = { ...row };
+  form.value = {
+    ...row,
+    // be defensive: if backend returns ISO string, convert to Date for the picker
+    joinedAt: row.joinedAt ? new Date(row.joinedAt) : new Date(),
+  };
   showDialog.value = true;
 }
+
 
 async function save() {
   error.value = "";
   success.value = "";
   try {
+    const payload = {
+      ...form.value,
+      userId: Number(form.value.userId || 0),
+      // convert to ISO for the API:
+      joinedAt: form.value.joinedAt ? new Date(form.value.joinedAt).toISOString() : null,
+    };
+
     if (isEdit.value && form.value.id) {
-      const updated = await HouseholdMemberService.updateMember(form.value.id, {
-        ...form.value,
-        userId: Number(form.value.userId || 0),
-      });
-      // replace in local list
+      const updated = await HouseholdMemberService.updateMember(form.value.id, payload);
       members.value = members.value.map(m => (m.id === updated.id ? updated : m));
       success.value = "Member updated.";
     } else {
-      const created = await HouseholdMemberService.createMember({
-        ...form.value,
-        userId: Number(form.value.userId || 0),
-      });
+      const created = await HouseholdMemberService.createMember(payload);
       members.value = [created, ...members.value];
       success.value = "Member added.";
     }
     showDialog.value = false;
   } catch (e) {
     console.error(e);
-    const msg = typeof e === "object" && !Array.isArray(e) ? (e.message || "") : "";
-    // If it’s a validation errors object, show a generic message and log full detail
-    error.value = msg || "Could not save member. Check fields and try again.";
+    error.value = e?.message || "Could not save member. Check fields and try again.";
   }
 }
+
 
 function confirmDelete(row) {
   confirm.require({
@@ -161,14 +170,14 @@ onMounted(load);
       </div>
     </div>
 
-    <Card >
+    <Card :pt="{root:{ class:'welcome-card border-round mb-3'}}">
       <template #content>
         <DataTable
             :value="members"
             dataKey="id"
             :loading="loading"
             responsiveLayout="scroll"
-            class="p-datatable-sm"
+            class="p-datatable-sm custom-table"
         >
           <Column field="id" header="ID" sortable />
           <Column field="userId" header="User ID" sortable />
@@ -226,9 +235,9 @@ onMounted(load);
             showIcon
             :manualInput="true"
             :pt="{ input: { class: 'w-full' } }"
-            @update:modelValue="val => (form.joinedAt = typeof val === 'string' ? val : new Date(val).toISOString())"
         />
-        <small class="text-600">Current: {{ typeof form.joinedAt === 'string' ? form.joinedAt : '' }}</small>
+        <small class="text-600">
+          Current: {{ form.joinedAt ? new Date(form.joinedAt).toISOString() : '' }}</small>
       </div>
 
       <div class="flex justify-content-end gap-2 mt-4">
@@ -242,6 +251,17 @@ onMounted(load);
 </template>
 
 <style scoped>
+::v-deep(.custom-table .p-datatable-thead > tr > th) {
+  background-color: white;
+  color: black;
+
+}
+
+::v-deep(.custom-table .p-datatable-tbody > tr > td) {
+  background-color: white;
+  color: black;
+}
+
 .welcome-card .title { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 .welcome-card .subtitle { color: #6b7280; }
 .members-home {

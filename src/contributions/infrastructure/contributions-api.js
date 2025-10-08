@@ -1,8 +1,8 @@
 ﻿import httpInstance from "@/shared/services/http.instance.js";
 
-const resourceEndpoint = import.meta.env.VITE_BILLS_PATH;
+const resourceEndpoint = import.meta.env.VITE_MEMBER_CONTRIBUTIONS_PATH;
 
-export const BillApi = {
+export const MemberContributionApi = {
     resourceEndpoint,
 
     async getAll() {
@@ -15,13 +15,13 @@ export const BillApi = {
         return data ?? null;
     },
 
-    async listByHouseholdId(householdId) {
-        const { data } = await httpInstance.get(`${resourceEndpoint}?householdId=${encodeURIComponent(householdId)}`);
+    async listByMemberId(memberId) {
+        const { data } = await httpInstance.get(`${resourceEndpoint}?memberId=${encodeURIComponent(memberId)}`);
         return Array.isArray(data) ? data : (data ?? []);
     },
 
-    async listByCreator(createdBy) {
-        const { data } = await httpInstance.get(`${resourceEndpoint}?createdBy=${encodeURIComponent(createdBy)}`);
+    async listByBillId(billId) {
+        const { data } = await httpInstance.get(`${resourceEndpoint}?billId=${encodeURIComponent(billId)}`);
         return Array.isArray(data) ? data : (data ?? []);
     },
 
