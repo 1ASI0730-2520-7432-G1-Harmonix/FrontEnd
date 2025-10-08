@@ -162,7 +162,7 @@ async function handleUpdateRoleFilter(value) {
 <style scoped>
 .members-container {
   padding: 1rem;
-  background: var(--surface-ground, #f8f9fa);
+  background: var(#f8f9fa);
   min-height: 100vh;
   animation: fadeIn 0.5s ease-in-out;
 }
