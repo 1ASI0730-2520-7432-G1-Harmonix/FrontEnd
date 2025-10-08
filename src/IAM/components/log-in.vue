@@ -48,10 +48,20 @@ async function signIn() {
       name: user.name,
       email: user.email,
       role: user.role,
-      householdId: user.householdId
+      householdId: user.householdId,
+      isNewUser: user.isNewUser,
+      plan: user.plan || 'FREE'
     };
     
     localStorage.setItem('user', JSON.stringify(userData));
+
+    // Check if this is a new user
+    if (user.role === 'representative' && user.isNewUser) {
+      localStorage.setItem('isNewUser', 'true');
+      
+      // Update user to no longer be new
+      await httpInstance.patch(`/users/${user.id}`, { isNewUser: false });
+    }
 
     // Redirect based on role
     if (user.role === 'representative') {
