@@ -40,6 +40,7 @@ import {
 } from "primevue";
 import router from "@/router/index.js";
 import i18n, {setUpLocalePersistence} from "@/i18n.js";
+import {createPinia} from "pinia";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -60,6 +61,7 @@ app.use(PrimeVue, {
 });
 app.use(router);
 app.use(i18n);
+app.use(createPinia())
 app.component('pv-inputtext', InputText).
 component('pv-password', Password ).
 component('pv-checkbox', Checkbox).
