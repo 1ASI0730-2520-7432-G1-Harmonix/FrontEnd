@@ -27,9 +27,9 @@ export class HouseholdMemberService {
         return toEntity(dto);
     }
 
-    static async listByUserId(userId) {
-        if (!userId) throw new Error("userId is not valid");
-        const arr = await HouseholdMemberApi.getByUserId(userId);
+    static async listByRepresentativeId(representativeId) {
+        if (!representativeId) throw new Error("userId is not valid");
+        const arr = await HouseholdMemberApi.getByRepresentativeId(representativeId);
         return (arr || []).map(toEntity);
     }
 

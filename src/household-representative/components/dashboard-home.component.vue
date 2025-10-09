@@ -69,7 +69,7 @@ function navigateTo(route) {
           </div>
           <div class="flex align-items-center gap-2">
             <span class="plan-badge" :class="plan.toLowerCase()">{{ plan === 'FREE' ? 'Plan Free' : 'Plan Premium' }}</span>
-            <div class="household-pill">ID del Hogar: <strong>{{ user?.householdId }}</strong></div>
+            <div class="household-pill">Hogar Primario: <strong>{{ user?.householdId }}</strong></div>
             <button class="notif-bell" title="Notificaciones" aria-label="Notificaciones" type="button">
               <i class="pi pi-bell"></i>
               <span class="dot-indicator" />

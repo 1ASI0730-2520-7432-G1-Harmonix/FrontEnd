@@ -55,18 +55,18 @@ function formatDate(iso) {
 
 async function load() {
   const userData = localStorage.getItem("user");
-  const householdIdAux = JSON.parse(userData).householdId;
+  const userIdAux = JSON.parse(userData).id;
 
-  console.log('HouseHold: ',householdIdAux);
-  if (!householdIdAux) {
-    error.value = "No householdId provided.";
+  console.log('UserIdAux: ',userIdAux);
+  if (!userIdAux) {
+    error.value = "No UserId provided.";
     return;
   }
   loading.value = true;
   error.value = "";
   success.value = "";
   try {
-    const list = await HouseholdMemberService.listByHouseholdId(householdIdAux);
+    const list = await HouseholdMemberService.listByRepresentativeId(userIdAux);
     console.log('List:',list);
     members.value = list;
     console.log('Members:',members.value);

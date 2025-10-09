@@ -26,6 +26,28 @@
       "role": "member",
       "status": "active",
       "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1759967718381,
+      "name": "WIWIWI",
+      "email": "hmm@gmail.com",
+      "password": "$LuLu124",
+      "role": "representative",
+      "status": "active",
+      "plan": "PREMIUM",
+      "householdId": "HOG-1759967718381",
+      "isNewUser": true
+    },
+    {
+      "id": 1759972839588,
+      "name": "adsadada",
+      "email": "fggfg@gmail.com",
+      "password": "3242423424",
+      "role": "representative",
+      "status": "active",
+      "plan": "FREE",
+      "householdId": "HOG-1759972839588",
+      "isNewUser": true
     }
   ],
   "settings": [
@@ -46,6 +68,26 @@
       "representativeId": 1759796571919,
       "currency": 1,
       "createdAt": "2025-10-07T00:00:00.000Z"
+    },
+    {
+      "id": "HOG-1759967718381",
+      "name": "",
+      "description": "",
+      "memberCount": 1,
+      "startDate": "2025-10-08T23:55:18.381Z",
+      "currency": "USD",
+      "representativeId": 1759967718381,
+      "createdAt": "2025-10-08T23:55:18.381Z"
+    },
+    {
+      "id": "HOG-1759972839588",
+      "name": "",
+      "description": "",
+      "memberCount": 1,
+      "startDate": "2025-10-09T01:20:39.588Z",
+      "currency": "USD",
+      "representativeId": 1759972839588,
+      "createdAt": "2025-10-09T01:20:39.588Z"
     }
   ],
   "householdMember": [
