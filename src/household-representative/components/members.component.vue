@@ -6,6 +6,7 @@ import { MemberFilters } from '../models/member.model.js';
 import MembersTable from './members-table.vue';
 import MembersSearchBar from './members-search-bar.vue';
 import MemberDetailsModal from './member-details-modal.vue';
+import AddMemberForm from './add-member-form.vue';
 
 const router = useRouter();
 
@@ -17,6 +18,7 @@ const filters = ref(new MemberFilters());
 const showAddMemberDialog = ref(false);
 const showMemberDetailsDialog = ref(false);
 const selectedMember = ref(null);
+const user = ref(null);
 
 // Computed properties
 const filteredMembers = computed(() => {
@@ -25,6 +27,10 @@ const filteredMembers = computed(() => {
 
 // Methods
 onMounted(async () => {
+  const userData = localStorage.getItem('user');
+  if (userData) {
+    user.value = JSON.parse(userData);
+  }
   await loadMembers();
 });
 
@@ -72,6 +78,10 @@ async function handleUpdateStatusFilter(value) {
 
 async function handleUpdateRoleFilter(value) {
   filters.value.roleFilter = value;
+  await loadMembers();
+}
+
+async function handleMemberAdded() {
   await loadMembers();
 }
 </script>
@@ -144,18 +154,12 @@ async function handleUpdateRoleFilter(value) {
       :member="selectedMember"
     />
 
-    <!-- Add Member Dialog -->
-    <pv-dialog 
-      v-model:visible="showAddMemberDialog" 
-      header="Añadir nuevo miembro"
-      :modal="true" 
-      :style="{ width: '40vw' }"
-    >
-      <div class="add-member-form">
-        <p>Funcionalidad de añadir miembro en desarrollo...</p>
-        <pv-button label="Cerrar" @click="showAddMemberDialog = false" />
-      </div>
-    </pv-dialog>
+    <!-- Add Member Form -->
+    <AddMemberForm
+      v-model:visible="showAddMemberDialog"
+      :household-id="user?.householdId"
+      @member-added="handleMemberAdded"
+    />
   </div>
 </template>
 
