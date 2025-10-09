@@ -64,8 +64,9 @@ class MemberAssembler {
     const users = usersResponse.data;
     const allContributions = contributionsResponse.data;
     const householdMembers = householdMembersResponse.data;
+    const memberUsers = users.filter(user => user.role === 'member');
     
-    return users.map(user => {
+    return memberUsers.map(user => {
       const householdMember = householdMembers.find(hm => hm.userId === user.id);
       const totalContributed = this.processor.calculateTotalContributions(
         householdMember?.id, 
