@@ -29,6 +29,7 @@ import {
 } from "primevue";
 import router from "@/router/index.js";
 import i18n from "@/i18n.js";
+import Textarea from "primevue/textarea";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -65,6 +66,7 @@ component('pv-progressbar', ProgressBar).
 component('pv-card', Card).
 component('pv-tag', Tag).
 component('pv-column', Column).
-component('pv-datatable', DataTable)
+component('pv-datatable', DataTable).
+    component('pv-textarea', Textarea);
 
 app.mount('#app');
