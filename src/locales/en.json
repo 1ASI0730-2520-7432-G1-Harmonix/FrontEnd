@@ -10,5 +10,15 @@
     "last_updated": "Last Updated:",
     "summary": "Summary",
     "notifications": "Notifications"
+  },
+  "sidebar": {
+    "myHome": "My Home",
+    "dashboard": "Dashboard",
+    "households":"Households",
+    "members": "Members",
+    "expenses": "Expenses",
+    "contributions": "Contributions",
+    "settings": "Settings",
+    "logout": "Log Out"
   }
 }

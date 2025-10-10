@@ -10,5 +10,15 @@
     "last_updated": "Ultima actualización:",
     "summary": "Resumen",
     "notifications": "Notificaciones"
+  },
+  "sidebar": {
+    "myHome": "Mi Hogar",
+    "dashboard": "Dashboard",
+    "households":"Hogares",
+    "members": "Miembros",
+    "expenses": "Gastos",
+    "contributions": "Contribuciones",
+    "settings": "Ajustes",
+    "logout": "Cerrar Sesion"
   }
 }
