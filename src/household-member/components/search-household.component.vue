@@ -108,25 +108,25 @@ async function onJoin () {
 </template>
 
 <style scoped>
-:host {
-  display: block;
-  margin-left: 250px;
-  padding: 1rem;
-  box-sizing: border-box;
-  background: transparent;
-}
-@media (max-width: 992px) {
-  :host { margin-left: 60px; }
-}
+
 
 .page {
-  max-width: 600px;
-  margin: 0 auto;
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 85vh;
+  min-height: 100vh; /* full viewport height */
+  background: #f5f6fa; /* optional: a soft neutral background */
+  animation: fadeIn 0.5s ease-in-out;
+  padding: 1rem;
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+
+
 
 .search-card {
   background: #ffffff;
@@ -137,6 +137,7 @@ async function onJoin () {
   text-align: center;
   width: 100%;
   max-width: 480px;
+  max-height: 480px;
 }
 
 .title {

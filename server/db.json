@@ -72,16 +72,17 @@
     {
       "id": "STT-124490",
       "userId": 1759796571919,
-      "language": "ES",
-      "darkMode": true,
+      "language": "es",
+      "darkMode": false,
       "notificationEnabled": false,
       "createdAt": "2025-10-06T00:00:00.000Z",
-      "updatedAt": "2025-10-06T00:00:00.000Z"
+      "updatedAt": "2025-10-08T20:45:40.917Z"
     }
   ],
   "households": [
     {
       "id": "HOG-1759796571919",
+      "name": "tralalala",
       "representativeId": 1759796571919,
       "currency": 1,
       "createdAt": "2025-10-07T00:00:00.000Z"
@@ -176,6 +177,16 @@
       "paymentDay": "2026-10-10T00:00:00.000Z",
       "createdAt": "2025-10-09T00:00:00.000Z",
       "updatedAt": "2025-10-09T00:00:00.000Z"
+    },
+    {
+      "id": "bXZVUQd",
+      "householdId": "HOG-1759796571919",
+      "description": "woowowow",
+      "amount": "2000.00",
+      "createdBy": 1759796571919,
+      "paymentDay": "2025-10-10T05:00:00.000Z",
+      "createdAt": "2025-10-08T22:41:33.543Z",
+      "updatedAt": "2025-10-08T22:41:33.543Z"
     }
   ],
   "contributions": [

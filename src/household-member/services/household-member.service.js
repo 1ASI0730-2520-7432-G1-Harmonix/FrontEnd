@@ -1,34 +1,67 @@
-﻿import httpInstance from "@/shared/services/http.instance.js";
+﻿import {HouseholdMember} from "@/household-member/models/household-member.entity.js";
+import {HouseholdMemberApi} from "@/household-member/infrastructure/household-member.api.js";
+import {toDTO, toEntity} from "@/household-member/infrastructure/household-member.assembler.js";
 
-export class HouseholdMemberService{
-    resourceEndpoint = import.meta.env.VITE_HOUSEHOLD_MEMBER_PATH;
 
-    getAll(){
-        return httpInstance.get(this.resourceEndpoint);
+
+export class HouseholdMemberService {
+    static async createMember(data) {
+        const nowIso = new Date().toISOString();
+        const member = new HouseholdMember({
+            ...data,
+            createdAt: data?.createdAt || nowIso,
+            updatedAt: data?.updatedAt || nowIso,
+            joinedAt: data?.joinedAt || nowIso,
+        });
+        const errors = member.validate();
+        if (errors) throw errors;
+
+        const created = await HouseholdMemberApi.create(toDTO(member));
+        return toEntity(created);
     }
 
-    getById(id){
-        return httpInstance.get(`${this.resourceEndpoint}/${id}`);
+    static async getMemberById(id) {
+        if (!id) throw new Error("ID is not valid");
+        const dto = await HouseholdMemberApi.getById(id);
+        if (!dto) throw new Error(`Wasn't able to find householdMember with id ${id}`);
+        return toEntity(dto);
     }
 
-    getByUserId(id){
-        return httpInstance.get(`${this.resourceEndpoint}/?userId=${id}`);
+    static async listByRepresentativeId(representativeId) {
+        if (!representativeId) throw new Error("userId is not valid");
+        const arr = await HouseholdMemberApi.getByRepresentativeId(representativeId);
+        return (arr || []).map(toEntity);
     }
 
-    getByHouseHoldId(id){
-        return httpInstance.get(`${this.resourceEndpoint}/?householdId=${id}`);
+    static async listByHouseholdId(householdId) {
+        if (!householdId) throw new Error("householdId is not valid");
+        const arr = await HouseholdMemberApi.getByHouseholdId(householdId);
+        return (arr || []).map(toEntity);
     }
 
-    create(resource){
-        return httpInstance.post(this.resourceEndpoint, resource);
+    static async updateMember(id, data) {
+        if (!id) throw new Error("ID is not valid");
+
+        const current = await this.getMemberById(id);
+        if (!current) throw new Error(`Member with id ${id} not found`);
+
+        const merged = new HouseholdMember({
+            ...toDTO(current),
+            ...data,
+            id: current.id,
+            updatedAt: new Date().toISOString(),
+        });
+
+        const errors = merged.validate();
+        if (errors) throw errors;
+
+        const updated = await HouseholdMemberApi.update(id, toDTO(merged));
+        if (!updated) throw new Error("No response from server");
+        return toEntity(updated);
     }
 
-    update(id, resource){
-        return httpInstance.put(`${this.resourceEndpoint}/${id}`, resource);
+    static async deleteMember(id) {
+        if (!id) throw new Error("ID is not valid");
+        await HouseholdMemberApi.remove(id);
     }
-
-    delete(id){
-        return httpInstance.delete(`${this.resourceEndpoint}/${id}`);
-    }
-
 }

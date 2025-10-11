@@ -4,7 +4,7 @@ import App from './App.vue';
 
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
-
+import {$t} from '@primeuix/styled';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 import {
@@ -50,6 +50,7 @@ app.use(PrimeVue, {
 });
 app.use(router);
 app.use(i18n);
+app.use(createPinia())
 app.component('pv-inputtext', InputText).
 component('pv-password', Password ).
 component('pv-checkbox', Checkbox).
@@ -68,5 +69,7 @@ component('pv-tag', Tag).
 component('pv-column', Column).
 component('pv-datatable', DataTable).
     component('pv-textarea', Textarea);
+
+setUpLocalePersistence();
 
 app.mount('#app');

@@ -1,6 +1,7 @@
 import http from '@/shared/services/http.instance';
 
 export const HouseholdApi = {
+
   async create(dto) {
     const res = await http.post('/households', dto);
     return res.data;

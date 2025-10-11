@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import {ref, onMounted, computed} from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
 import Button from 'primevue/button';
 import HouseholdModal from '@/households/presentation/components/household-modal.component.vue';
+import {useI18n} from "vue-i18n";
 
 const router = useRouter();
 const user = ref(null);
@@ -11,14 +12,15 @@ const members = ref([]);
 const sidebarCollapsed = ref(false);
 const showHouseholdModal = ref(false);
 
-const menuItems = [
-  { label: 'Dashboard', icon: 'pi pi-th-large', route: '/dashboard/representative' },
-  { label: 'Households', icon: 'pi pi-home', route: '/dashboard/representative/households' },
-  { label: 'Members', icon: 'pi pi-users', route: '/dashboard/representative/members' },
-  { label: 'Expenses', icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
-  { label: 'Contributions', icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' },
-  { label: 'Settings', icon: 'pi pi-cog', route: '/dashboard/representative/settings' }
-];
+const {t} = useI18n();
+const menuItems = computed(() => [
+  { label: t('sidebar.dashboard'), icon: 'pi pi-th-large', route: '/dashboard/representative' },
+  { label: t('sidebar.households'), icon: 'pi pi-home', route: '/dashboard/representative/households' },
+  { label: t('sidebar.members'), icon: 'pi pi-users', route: '/dashboard/representative/members' },
+  { label: t('sidebar.expenses'), icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
+  { label: t('sidebar.contributions'), icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' },
+  { label: t('sidebar.settings'), icon: 'pi pi-cog', route: '/dashboard/representative/settings' }
+]);
 
 onMounted(async () => {
   const userData = localStorage.getItem('user');
@@ -75,7 +77,7 @@ async function removeMember(memberId) {
       <div class="sidebar-header">
         <div class="logo" @click="navigateTo('/dashboard/representative')">
           <i class="pi pi-home"></i>
-          <span v-if="!sidebarCollapsed">Mi Hogar</span>
+          <span v-if="!sidebarCollapsed">{{$t('sidebar.myHome')}}</span>
         </div>
         <Button icon="pi pi-bars" text @click="toggleSidebar" class="toggle-btn" />
       </div>
@@ -106,7 +108,7 @@ async function removeMember(memberId) {
         <Button
           v-if="!sidebarCollapsed"
           icon="pi pi-sign-out"
-          label="Cerrar sesión"
+          :label="t('sidebar.logout')"
           text
           class="logout-btn"
           @click="logout"
@@ -170,12 +172,21 @@ async function removeMember(memberId) {
 
 
 
-.sidebar-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
-.logo { display:flex; align-items:center; gap:.75rem; cursor:pointer; font-weight:700; color:#f5f7ff; font-size:1.1rem; }
+.sidebar-header {
+  display:flex;
+  align-items:center; justify-content:space-between; padding:12px 16px; }
+.logo {
+  display:flex;
+  align-items:center;
+  gap: 0.75rem;
+  cursor:pointer;
+  font-weight:700; color:#f5f7ff; font-size:1.1rem; }
 .toggle-btn { color:#f5f7ff; }
 
-.user-profile { display:flex; align-items:center; gap:1rem; padding:10px 16px; }
-.user-profile img { width:46px; height:46px; border-radius:50%; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
+.user-profile { display:flex; align-items:center;
+  gap:1rem; padding:10px 16px; }
+.user-profile img { width:46px; height:46px; border-radius:50%;
+  object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
 .user-profile h4 { margin:0; font-size:1rem; }
 .user-profile p { margin:0; font-size:.85rem; color:#d6def8; opacity:.85; }
 
