@@ -12,35 +12,24 @@ import {
     Card,
     Checkbox,
     Column,
-    ConfirmationService,
-    ConfirmDialog,
     DataTable,
     Dialog,
-    DialogService,
-    Drawer,
-    FileUpload,
-    FloatLabel,
-    IconField,
-    InputIcon,
-    InputNumber,
+    Dropdown,
     InputText,
     Password,
-    Menu,
-    Rating,
-    Row,
-    Select,
     SelectButton,
     Tag,
-    Textarea,
-    Toast,
-    ToastService,
     Toolbar,
     Divider,
-    Message, ProgressBar
+    Message,
+    ProgressBar,
+    ToastService,
+    ConfirmationService,
+    DialogService
 } from "primevue";
 import router from "@/router/index.js";
-import i18n, {setUpLocalePersistence} from "@/i18n.js";
-import {createPinia} from "pinia";
+import i18n from "@/i18n.js";
+import Textarea from "primevue/textarea";
 // utility classes (grid, spacing, flex, responsive)
 
 const app = createApp(App);
@@ -69,11 +58,17 @@ component('pv-button', Button).
 component('pv-divider', Divider).
 component('pv-message', Message).
 component('pv-select-button', SelectButton).
+component('pv-dropdown', Dropdown).
+component('pv-datatable', DataTable).
+component('pv-column', Column).
+component('pv-dialog', Dialog).
+component('pv-toolbar', Toolbar).
 component('pv-progressbar', ProgressBar).
 component('pv-card', Card).
 component('pv-tag', Tag).
 component('pv-column', Column).
-component('pv-datatable', DataTable)
+component('pv-datatable', DataTable).
+    component('pv-textarea', Textarea);
 
 setUpLocalePersistence();
 

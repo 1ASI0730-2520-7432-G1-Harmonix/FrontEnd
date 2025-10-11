@@ -28,26 +28,44 @@
       "householdId": "HOG-1759796571919"
     },
     {
-      "id": 1759967718381,
-      "name": "WIWIWI",
-      "email": "hmm@gmail.com",
-      "password": "$LuLu124",
-      "role": "representative",
-      "status": "active",
-      "plan": "PREMIUM",
-      "householdId": "HOG-1759967718381",
-      "isNewUser": true
+      "id": 1759801172916,
+      "name": "Valery Guevara",
+      "email": "valery.guevara@gmail.com",
+      "password": "Hola12345TY",
+      "role": "member",
+      "status": "invited",
+      "householdId": "HOG-1759796571919"
     },
     {
-      "id": 1759972839588,
-      "name": "adsadada",
-      "email": "fggfg@gmail.com",
-      "password": "3242423424",
+      "id": 1759801172917,
+      "name": "Dayana Acuña",
+      "email": "dayana.acuna@gmail.com",
+      "password": "Hola12345TY",
+      "role": "representative",
+      "status": "active",
+      "householdId": "HOG-1759703841924"
+    },
+    {
+      "id": 1759968386579,
+      "name": "Angel Martin Gonzales Castillo",
+      "email": "martin@gmail.com",
+      "password": "123456789",
       "role": "representative",
       "status": "active",
       "plan": "FREE",
-      "householdId": "HOG-1759972839588",
-      "isNewUser": true
+      "householdId": "HOG-1759968386579",
+      "isNewUser": false
+    },
+    {
+      "id": 1759968436155,
+      "name": "Jane Doe",
+      "email": "jane.done@gmail.com",
+      "password": "123456789",
+      "role": "member",
+      "status": "active",
+      "plan": "FREE",
+      "householdId": "HOG-1759968386579",
+      "isNewUser": false
     }
   ],
   "settings": [
@@ -70,24 +88,14 @@
       "createdAt": "2025-10-07T00:00:00.000Z"
     },
     {
-      "id": "HOG-1759967718381",
+      "id": "HOG-1759968386579",
       "name": "",
       "description": "",
       "memberCount": 1,
-      "startDate": "2025-10-08T23:55:18.381Z",
+      "startDate": "2025-10-09T00:06:26.579Z",
       "currency": "USD",
-      "representativeId": 1759967718381,
-      "createdAt": "2025-10-08T23:55:18.381Z"
-    },
-    {
-      "id": "HOG-1759972839588",
-      "name": "",
-      "description": "",
-      "memberCount": 1,
-      "startDate": "2025-10-09T01:20:39.588Z",
-      "currency": "USD",
-      "representativeId": 1759972839588,
-      "createdAt": "2025-10-09T01:20:39.588Z"
+      "representativeId": 1759968386579,
+      "createdAt": "2025-10-09T00:06:26.580Z"
     }
   ],
   "householdMember": [
@@ -100,12 +108,63 @@
       "updatedAt": "2025-10-08T00:00:00.000Z"
     },
     {
-      "id": "HM-1233937822",
-      "userId": 1759798502697,
+      "id": "HM-123394",
+      "userId": 1759801172915,
       "householdId": "HOG-1759796571919",
       "joinedAt": "2025-10-08T00:00:00.000Z",
       "createdAt": "2025-10-08T00:00:00.000Z",
       "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-123395",
+      "userId": 1759801172916,
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-123396",
+      "userId": 1759801172917,
+      "householdId": "HOG-1759796571919",
+      "joinedAt": "2025-10-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "HM-1759968092636",
+      "userId": "[object PointerEvent]",
+      "joinedAt": "2025-10-09T00:01:32.636Z",
+      "createdAt": "2025-10-09T00:01:32.636Z",
+      "updatedAt": "2025-10-09T00:01:32.636Z"
+    },
+    {
+      "id": "HM-1759968097895",
+      "userId": "[object PointerEvent]",
+      "joinedAt": "2025-10-09T00:01:37.895Z",
+      "createdAt": "2025-10-09T00:01:37.895Z",
+      "updatedAt": "2025-10-09T00:01:37.895Z"
+    },
+    {
+      "id": "HM-1759968098068",
+      "userId": "[object PointerEvent]",
+      "joinedAt": "2025-10-09T00:01:38.068Z",
+      "createdAt": "2025-10-09T00:01:38.068Z",
+      "updatedAt": "2025-10-09T00:01:38.068Z"
+    },
+    {
+      "id": "HM-1759968454363",
+      "userId": "[object PointerEvent]",
+      "joinedAt": "2025-10-09T00:07:34.363Z",
+      "createdAt": "2025-10-09T00:07:34.363Z",
+      "updatedAt": "2025-10-09T00:07:34.363Z"
+    },
+    {
+      "id": "HM-1759968454526",
+      "userId": "[object PointerEvent]",
+      "joinedAt": "2025-10-09T00:07:34.526Z",
+      "createdAt": "2025-10-09T00:07:34.526Z",
+      "updatedAt": "2025-10-09T00:07:34.526Z"
     }
   ],
   "bills": [
@@ -148,6 +207,46 @@
       "contributionId": "CN-272818",
       "memberId": "HM-123393",
       "amount": "20.0",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152673",
+      "contributionId": "CN-272819",
+      "memberId": "HM-123394",
+      "amount": "100.00",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152674",
+      "contributionId": "CN-272820",
+      "memberId": "HM-123395",
+      "amount": "67.90",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152675",
+      "contributionId": "CN-272821",
+      "memberId": "HM-123396",
+      "amount": "450.00",
+      "status": 1,
+      "payedAt": "2026-08-08T00:00:00.000Z",
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "MC-152676",
+      "contributionId": "CN-272822",
+      "memberId": "HM-123393",
+      "amount": "226.30",
       "status": 1,
       "payedAt": "2026-08-08T00:00:00.000Z",
       "createdAt": "2025-10-08T00:00:00.000Z",
