@@ -26,9 +26,20 @@
       "role": "member",
       "status": "active",
       "householdId": "HOG-1759796571919"
+    },
+    {
+      "id": 1760499652169,
+      "name": "Camilla",
+      "email": "admin1@gmail.com",
+      "password": "123456789",
+      "role": "representative",
+      "status": "active",
+      "plan": "PREMIUM",
+      "householdId": "HOG-1760499652169",
+      "isNewUser": false
     }
   ],
-  "settings":[
+  "settings": [
     {
       "id": "STT-124490",
       "userId": 1759796571919,
@@ -45,6 +56,17 @@
       "representativeId": 1759796571919,
       "currency": 1,
       "createdAt": "2025-10-07T00:00:00.000Z"
+    },
+    {
+      "id": "HOG-1760499652169",
+      "name": "Nido",
+      "description": "Pajaros",
+      "memberCount": 3,
+      "startDate": "2025-10-15T03:40:52.169Z",
+      "currency": "USD",
+      "representativeId": 1760499652169,
+      "createdAt": "2025-10-15T03:40:52.171Z",
+      "updatedAt": "2025-10-15T03:41:24.020Z"
     }
   ],
   "householdMember": [
