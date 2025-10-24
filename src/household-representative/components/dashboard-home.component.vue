@@ -105,6 +105,16 @@ function renderChart(){
           <div class="shell-header">
             <h1 class="dash-title">Dashboard</h1>
           </div>
+          <div class="flex align-items-center gap-2">
+            <span class="plan-badge" :class="plan.toLowerCase()">{{ plan === 'FREE' ? 'Plan Free' : 'Plan Premium' }}</span>
+            <div class="household-pill">Hogar Primario: <strong>{{ user?.householdId }}</strong></div>
+            <button class="notif-bell" title="Notificaciones" aria-label="Notificaciones" type="button">
+              <i class="pi pi-bell"></i>
+              <span class="dot-indicator" />
+            </button>
+          </div>
+        </div>
+      </div>
 
           <div class="welcome">
             <div class="welcome-text">

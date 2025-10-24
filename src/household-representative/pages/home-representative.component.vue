@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import {ref, onMounted, computed} from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
 import Button from 'primevue/button';
 import HouseholdModal from '@/households/presentation/components/household-modal.component.vue';
-import HarmonixLogo from '@/assets/harmonix_logo.PNG';
+import {useI18n} from "vue-i18n";
 
 const router = useRouter();
 const user = ref(null);
@@ -12,13 +12,15 @@ const members = ref([]);
 const sidebarCollapsed = ref(false);
 const showHouseholdModal = ref(false);
 
-const menuItems = [
-  { label: 'Dashboard', icon: 'pi pi-th-large', route: '/dashboard/representative' },
-  { label: 'House Holds', icon: 'pi pi-home', route: '/dashboard/representative/households' },
-  { label: 'Members', icon: 'pi pi-users', route: '/dashboard/representative/members' },
-  { label: 'Expenses', icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
-  { label: 'Contributions', icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' }
-];
+const {t} = useI18n();
+const menuItems = computed(() => [
+  { label: t('sidebar.dashboard'), icon: 'pi pi-th-large', route: '/dashboard/representative' },
+  { label: t('sidebar.households'), icon: 'pi pi-home', route: '/dashboard/representative/households' },
+  { label: t('sidebar.members'), icon: 'pi pi-users', route: '/dashboard/representative/members' },
+  { label: t('sidebar.expenses'), icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
+  { label: t('sidebar.contributions'), icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' },
+  { label: t('sidebar.settings'), icon: 'pi pi-cog', route: '/dashboard/representative/settings' }
+]);
 
 onMounted(async () => {
   const userData = localStorage.getItem('user');
@@ -73,7 +75,10 @@ async function removeMember(memberId) {
     <!-- Sidebar (futuristic glass) -->
     <aside :class="['sidebar','sidebar--light', { collapsed: sidebarCollapsed }]">
       <div class="sidebar-header">
-        <img class="brand" :src="HarmonixLogo" alt="HarMoniX" @click="navigateTo('/dashboard/representative')" />
+        <div class="logo" @click="navigateTo('/dashboard/representative')">
+          <i class="pi pi-home"></i>
+          <span v-if="!sidebarCollapsed">{{$t('sidebar.myHome')}}</span>
+        </div>
         <Button icon="pi pi-bars" text @click="toggleSidebar" class="toggle-btn" />
       </div>
 
@@ -93,29 +98,22 @@ async function removeMember(memberId) {
         </li>
       </ul>
 
-      <!-- Bottom area: Settings + User card -->
-      <div class="bottom-area">
-        <template v-if="!sidebarCollapsed">
-          <div class="settings-row" @click="navigateTo('/dashboard/representative/settings')">
-            <span class="gear-bg"><i class="pi pi-cog"></i></span>
-            <span class="settings-text">Settings</span>
-          </div>
-
-          <div class="user-card" v-if="user">
-            <div class="info">
-              <div class="name">{{ user.name }} </div>
-              <div class="email">{{ user.email }}</div>
-            </div>
-            <button class="logout-icon" title="Cerrar sesión" @click="logout"><i class="pi pi-sign-out"></i></button>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="bottom-collapsed">
-            <Button class="icon-btn" icon="pi pi-cog" rounded text @click="navigateTo('/dashboard/representative/settings')" />
-            <Button class="icon-btn danger" icon="pi pi-sign-out" rounded text @click="logout" />
-          </div>
-        </template>
+      <div class="sidebar-footer">
+        <Button
+          v-if="!sidebarCollapsed"
+          icon="pi pi-sign-out"
+          :label="t('sidebar.logout')"
+          text
+          class="logout-btn"
+          @click="logout"
+        />
+        <Button
+          v-else
+          icon="pi pi-sign-out"
+          text
+          rounded
+          @click="logout"
+        />
       </div>
 
       
@@ -170,12 +168,21 @@ async function removeMember(memberId) {
 
 
 
-.sidebar-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
-.logo { display:flex; align-items:center; gap:.75rem; cursor:pointer; font-weight:700; color:#f5f7ff; font-size:1.1rem; }
+.sidebar-header {
+  display:flex;
+  align-items:center; justify-content:space-between; padding:12px 16px; }
+.logo {
+  display:flex;
+  align-items:center;
+  gap: 0.75rem;
+  cursor:pointer;
+  font-weight:700; color:#f5f7ff; font-size:1.1rem; }
 .toggle-btn { color:#f5f7ff; }
 
-.user-profile { display:flex; align-items:center; gap:1rem; padding:10px 16px; }
-.user-profile img { width:46px; height:46px; border-radius:50%; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
+.user-profile { display:flex; align-items:center;
+  gap:1rem; padding:10px 16px; }
+.user-profile img { width:46px; height:46px; border-radius:50%;
+  object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
 .user-profile h4 { margin:0; font-size:1rem; }
 .user-profile p { margin:0; font-size:.85rem; color:#d6def8; opacity:.85; }
 
