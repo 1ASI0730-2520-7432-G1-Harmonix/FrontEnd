@@ -30,6 +30,14 @@ export const BillApi = {
         return data;
     },
 
+    // Some backends ignore provided id on POST. This helper
+    // attempts to create the resource with a specific id using PUT.
+    async createWithId(resource) {
+        if (!resource?.id) throw new Error("id is required to create with specific id");
+        const { data } = await httpInstance.put(`${resourceEndpoint}/${encodeURIComponent(resource.id)}`, resource);
+        return data;
+    },
+
     async update(id, resource) {
         const { data } = await httpInstance.put(`${resourceEndpoint}/${id}`, resource);
         return data;

@@ -25,6 +25,7 @@ const route = useRoute();
 const confirm = useConfirm();
 
 const householdId = ref(route.query.householdId || route.params.householdId || "");
+const currentUserId = ref(0);
 const loading = ref(false);
 const error = ref("");
 const success = ref("");
@@ -38,7 +39,6 @@ const blankForm = {
   householdId: "",
   description: "",
   amount: 0,                 // number in the form
-  createdBy: 0,
   paymentDay: new Date(),
   createdAt: "",
   updatedAt: "",
@@ -61,8 +61,9 @@ function formatMoney(n) {
 
 async function load() {
   const AuxUser = localStorage.getItem("user");
-  const HouseHoldId = JSON.parse(AuxUser).householdId;
-  console.log("uwu",HouseHoldId);
+  const parsedUser = AuxUser ? JSON.parse(AuxUser) : null;
+  const HouseHoldId = parsedUser?.householdId;
+  currentUserId.value = Number(parsedUser?.id || 0);
   if (!HouseHoldId) {
     error.value = "No householdId provided.";
     return;
@@ -112,7 +113,7 @@ async function save() {
     const payload = {
       ...form.value,
       householdId: form.value.householdId || householdId.value,
-      createdBy: Number(form.value.createdBy || 0),
+      createdBy: Number(currentUserId.value || 0),
       // backend expects string "100.00"
       amount: Number(form.value.amount || 0).toFixed(2),
       // backend expects ISO string
@@ -235,10 +236,7 @@ onMounted( async () => {
         />
       </div>
 
-      <div class="field mb-3">
-        <label class="block mb-2">Created By (userId)</label>
-        <InputText v-model.number="form.createdBy" placeholder="e.g., 1759796571919" />
-      </div>
+      
 
       <div class="field mb-3">
         <label class="block mb-2">Payment Day</label>

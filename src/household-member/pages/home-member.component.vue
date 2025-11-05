@@ -230,4 +230,9 @@ function logout() {
     margin-left: 0;
   }
 }
+
+/* Fix: avoid icon jump/disappear on hover */
+.menu li .pill:hover { transform: none; }
+.menu .pill .icon-hold { display: grid; place-items: center; }
+.menu .pill i { display: block; line-height: 1; }
 </style>

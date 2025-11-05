@@ -4,6 +4,7 @@ export function toEntity(dto = {}) {
     if (!dto || typeof dto !== "object") return new MemberContribution({});
     return new MemberContribution({
         id: dto.id ?? "",
+        billId: dto.billId ?? "",
         contributionId: dto.contributionId ?? "",
         memberId: dto.memberId ?? "",
         amount: typeof dto.amount === "string" ? Number(dto.amount) : (dto.amount ?? 0),
@@ -19,6 +20,7 @@ export function toDTO(entity) {
     const toMoneyString = (n) => Number(n || 0).toFixed(2);
     return {
         id: entity.id,
+        billId: entity.billId,
         contributionId: entity.contributionId,
         memberId: entity.memberId,
         amount: toMoneyString(entity.amount),

@@ -15,31 +15,48 @@ const membersLimit = ref(null);
 const loading = ref(true);
 
 onMounted(async () => {
-  const userData = localStorage.getItem('user');
-  if (userData) {
-    user.value = JSON.parse(userData);
-    plan.value = user.value?.plan || 'FREE';
-    membersLimit.value = plan.value === 'FREE' ? 3 : null;
-    await loadDashboardData();
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      user.value = JSON.parse(userData);
+      plan.value = user.value?.plan || 'FREE';
+      membersLimit.value = plan.value === 'FREE' ? 3 : null;
+      await loadDashboardData();
+    }
+  } finally {
+    loading.value = false;
   }
-  loading.value = false;
 });
 
 async function loadDashboardData() {
+  if (!user.value) return;
+
+  // Helper to wrap a request with a timeout so UI never hangs
+  const withTimeout = (promise, ms = 6000) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+  };
+
   try {
-    const [members, bills, contributions, households] = await Promise.all([
-      httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`),
-      httpInstance.get(`/bills?householdId=${user.value.householdId}`),
-      httpInstance.get(`/contributions?householdId=${user.value.householdId}`),
-      httpInstance.get(`/households?representativeId=${user.value.id}`)
+    const results = await Promise.allSettled([
+      withTimeout(httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`)),
+      withTimeout(httpInstance.get(`/bills?householdId=${user.value.householdId}`)),
+      withTimeout(httpInstance.get(`/contributions?householdId=${user.value.householdId}`)),
+      withTimeout(httpInstance.get(`/households?representativeId=${user.value.id}`))
     ]);
 
-    totalMembers.value = members.data.length;
-    totalExpenses.value = (bills.data || []).reduce((sum, b) => sum + Number(b.amount || 0), 0);
-    totalContributions.value = (contributions.data || []).reduce((sum, c) => sum + Number(c.amount || 0), 0);
-    totalHouseholds.value = Array.isArray(households.data) ? households.data.length : 0;
+    const safe = (idx, fallback) => (results[idx].status === 'fulfilled' ? results[idx].value.data : fallback);
+    const members = safe(0, []);
+    const bills = safe(1, []);
+    const contributions = safe(2, []);
+    const households = safe(3, []);
 
-    // insights disabled
+    totalMembers.value = Array.isArray(members) ? members.length : 0;
+    totalExpenses.value = (bills || []).reduce((sum, b) => sum + Number(b?.amount || 0), 0);
+    totalContributions.value = (contributions || []).reduce((sum, c) => sum + Number(c?.amount || 0), 0);
+    totalHouseholds.value = Array.isArray(households) ? households.length : 0;
   } catch (error) {
     console.error('Error loading dashboard data:', error);
   }

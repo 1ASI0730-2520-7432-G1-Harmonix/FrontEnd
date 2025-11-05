@@ -1,6 +1,7 @@
 ﻿export class MemberContribution {
     constructor({
                     id = "",
+                    billId = "",
                     contributionId = "",
                     memberId = "",
                     amount = 0,
@@ -10,6 +11,7 @@
                     updatedAt = "",
                 } = {}) {
         this.id = id;
+        this.billId = billId;
         this.contributionId = contributionId;
         this.memberId = memberId;
         this.amount = typeof amount === "string" ? Number(amount) : Number(amount || 0);
