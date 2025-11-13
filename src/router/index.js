@@ -57,9 +57,10 @@ const routes = [
         meta: { title: 'Gestión de Gastos' }
       },
       {
-        path: 'contribution',
+        path: 'contribution/:householdId?',
         name: 'contribution-management',
         component: () => import('@/household-representative/components/contribution.component.vue'),
+        props: true,
         meta: { title: 'Gestión de Aportes' }
       },
       {
@@ -67,6 +68,12 @@ const routes = [
         name: 'representative-settings',
         component: () => import('@/household-representative/components/settings.component.vue'),
         meta: { title: 'Configuración' }
+      },
+      {
+        path: 'profile',
+        name: 'representative-profile',
+        component: () => import('@/profiles/presentation/views/profile.page.vue'),
+        meta: { title: 'Perfil' }
       }
     ]
   },
