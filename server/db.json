@@ -198,9 +198,13 @@
       "password": "123456789",
       "role": "representative",
       "status": "active",
-      "plan": "FREE",
+      "plan": "PREMIUM",
       "householdId": "HOG-1763014870642",
-      "isNewUser": false
+      "photo": "",
+      "profileLockedUntil": "2025-12-13T06:35:28.652Z",
+      "isNewUser": false,
+      "createdAt": "",
+      "updatedAt": "2025-11-13T06:35:28.652Z"
     }
   ],
   "settings": [

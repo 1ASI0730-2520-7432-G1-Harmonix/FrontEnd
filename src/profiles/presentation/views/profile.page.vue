@@ -52,9 +52,29 @@ const isLocked = computed(() => {
 
 const canEdit = computed(() => verificationStep.value === 1 && !isLocked.value);
 
+const hasPersonalChanges = computed(() => {
+  const first = form.firstName.trim();
+  const last = form.lastName.trim();
+  const email = form.email.trim().toLowerCase();
+  return (
+    first !== (initialSnapshot.value.firstName || '').trim() ||
+    last !== (initialSnapshot.value.lastName || '').trim() ||
+    email !== (initialSnapshot.value.email || '').trim().toLowerCase()
+  );
+});
+
+const hasPlanChange = computed(() => (form.plan || '') !== (initialSnapshot.value.plan || ''));
+
+const hasPasswordChange = computed(() => {
+  const next = form.password.trim();
+  const current = (initialSnapshot.value.password || '').trim();
+  return !!next && next !== current;
+});
+
+const hasPhotoChange = computed(() => (form.photo || '') !== (initialSnapshot.value.photo || ''));
+
 const isDirty = computed(() => {
-  const keys = Object.keys(form);
-  return keys.some(key => (form[key] || '') !== (initialSnapshot.value[key] || ''));
+  return hasPersonalChanges.value || hasPlanChange.value || hasPasswordChange.value || hasPhotoChange.value;
 });
 
 const disableNext = computed(() => !isDirty.value || saving.value || isLocked.value);
