@@ -24,21 +24,32 @@ async function signIn() {
     return;
   }
 
-  console.log("email", email.value);
+  // Normalize inputs
+  const normalizedEmail = String(email.value).trim().toLowerCase();
+  const normalizedPassword = String(password.value);
 
   try {
-    // Find user by email
-    const response = await httpInstance.get(`/users?email=${email.value}`);
-    const users = response.data;
+    // Find user by email (case-insensitive) and trim
+    const response = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
+    const all = (response.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
+    // Prefer ACTIVE users; if multiple, pick the latest by id
+    const actives = all.filter(u => String(u.status || '').toLowerCase() === 'active');
+    const users = actives.length > 0 ? actives : all;
 
     if (users.length === 0) {
       error.value = 'Invalid email or password.';
       return;
     }
 
-    const user = users[0];
-    if (user.password !== password.value) {
+    const user = users.sort((a,b) => Number(b.id||0) - Number(a.id||0))[0];
+    if (user.password !== normalizedPassword) {
       error.value = 'Invalid email or password.';
+      return;
+    }
+
+    // Optional: block invited users from signing in until they activate
+    if (user.status && String(user.status).toLowerCase() === 'invited') {
+      error.value = 'Please activate your account from the invitation before signing in.';
       return;
     }
 
