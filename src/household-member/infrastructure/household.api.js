@@ -14,6 +14,7 @@ export const HouseholdAPI = {
     billsByHousehold: (householdId) => get(`/bills?householdId=${householdId}`),
     contributionsByHousehold: (householdId) => get(`/contributions?householdId=${householdId}`),
     householdById: (id) => get(`/households?id=${id}`),
+    householdsByRepresentative: (representativeId) => get(`/households?representativeId=${representativeId}`),
 
     createMember: async (payload) => (await http.post('/householdMember', payload)).data
 };

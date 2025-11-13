@@ -109,7 +109,9 @@ function logout() {
 <style scoped>
 .layout-wrapper {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden;
   background: var(--surface-ground, #f8f9fa);
 }
 
@@ -118,9 +120,12 @@ function logout() {
   position: sticky;
   top: 0;
   width: 280px;
+  height: 100vh;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
   /* Stronger contrast so items are readable over light backgrounds */
   color: #e6ecff;
   background:
@@ -202,11 +207,12 @@ function logout() {
 }
 
 .main-content {
-  flex-grow: 1;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
   padding: 1rem;
   transition: margin-left 0.3s ease;
   overflow-y: auto;
-  width: calc(100% - 280px);
 }
 
 /* RESPONSIVE */
@@ -225,9 +231,12 @@ function logout() {
   }
 
   .main-content {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
     padding: 1rem;
     margin-left: 0;
+    overflow-y: auto;
   }
 }
 
