@@ -89,8 +89,8 @@ function splitName(fullName = '') {
 function setSnapshot(fromProfile) {
   const derived = splitName(fromProfile?.name);
   initialSnapshot.value = {
-    firstName: fromProfile?.firstName ?? derived.first ?? '',
-    lastName: fromProfile?.lastName ?? derived.last ?? '',
+    firstName: (fromProfile?.firstName ?? derived.first ?? '').trim(),
+    lastName: (fromProfile?.lastName ?? derived.last ?? '').trim(),
     email: fromProfile?.email || '',
     password: fromProfile?.password || '',
     plan: fromProfile?.plan || 'FREE',
@@ -271,9 +271,9 @@ onMounted(bootstrap);
               <i class="pi pi-camera"></i>
             </button>
           </div>
-          <h3>{{ form.firstName || 'Representante' }} {{ form.lastName }}</h3>
-          <p>{{ profile?.role || 'representative' }}</p>
-          <span class="tag">Plan {{ form.plan }}</span>
+          <h3>{{ profile?.name || form.firstName || 'Representante' }}</h3>
+          <p>{{ form.email || 'representative' }}</p>
+          <span class="tag">Plan {{ form.plan || 'FREE' }}</span>
         </div>
 
         <div class="help-card">
