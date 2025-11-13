@@ -7,6 +7,8 @@ import MembersTable from './members-table.vue';
 import MembersSearchBar from './members-search-bar.vue';
 import MemberDetailsModal from './member-details-modal.vue';
 import AddMemberForm from './add-member-form.vue';
+import { HouseholdService } from '@/households/infrastructure/household.service';
+import { useToast } from 'primevue/usetoast';
 
 const router = useRouter();
 
@@ -19,6 +21,10 @@ const showAddMemberDialog = ref(false);
 const showMemberDetailsDialog = ref(false);
 const selectedMember = ref(null);
 const user = ref(null);
+const plan = ref('FREE');
+const household = ref(null);
+const membersLimit = ref(null);
+const toast = useToast();
 
 // Computed properties
 const filteredMembers = computed(() => {
@@ -30,8 +36,10 @@ onMounted(async () => {
   const userData = localStorage.getItem('user');
   if (userData) {
     user.value = JSON.parse(userData);
+    plan.value = user.value?.plan || 'FREE';
+    membersLimit.value = plan.value === 'FREE' ? 3 : null;
   }
-  await loadMembers();
+  await Promise.all([loadMembers(), loadHousehold()]);
 });
 
 async function loadMembers() {
@@ -45,6 +53,16 @@ async function loadMembers() {
     console.error('Error loading members:', err);
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadHousehold() {
+  try {
+    if (!user.value?.householdId) return;
+    const h = await HouseholdService.getHouseholdById(user.value.householdId);
+    household.value = h;
+  } catch (err) {
+    console.error('Error loading household info:', err);
   }
 }
 
@@ -63,6 +81,16 @@ function handleViewMember(member) {
 }
 
 function addNewMember() {
+  if (!canAddMember.value) {
+    const cap = Number(household.value?.memberCount || 0);
+    toast.add({
+      severity: 'warn',
+      summary: 'Límite alcanzado',
+      detail: `Este hogar permite hasta ${cap} miembros.`,
+      life: 3000
+    });
+    return;
+  }
   showAddMemberDialog.value = true;
 }
 
@@ -83,7 +111,18 @@ async function handleUpdateRoleFilter(value) {
 
 async function handleMemberAdded() {
   await loadMembers();
+  await loadHousehold();
 }
+
+// Restriction computed based on household.memberCount (cap)
+const maxMembers = computed(() => {
+  const m = Number(household.value?.memberCount);
+  return Number.isFinite(m) && m > 0 ? m : null; // null means no explicit cap
+});
+const canAddMember = computed(() => {
+  if (!maxMembers.value) return true;
+  return filteredMembers.value.length < maxMembers.value;
+});
 </script>
 
 <template>
@@ -145,6 +184,7 @@ async function handleMemberAdded() {
         label="Añadir nuevo miembro"
         class="add-member-button"
         @click="addNewMember"
+        :disabled="!canAddMember"
       />
     </div>
 

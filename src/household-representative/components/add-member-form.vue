@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import httpInstance from '@/shared/services/http.instance';
+import { HouseholdService } from '@/households/infrastructure/household.service';
 
 /**
  * Add Member Form Component
@@ -55,6 +56,9 @@ const formData = ref({
 
 const loading = ref(false);
 const errors = ref({});
+const availableHouseholds = ref([]);
+const householdsLoading = ref(false);
+const representativeId = ref(null);
 
 // Computed
 const dialogVisible = computed({
@@ -66,6 +70,79 @@ const isFormValid = computed(() => {
   return formData.value.email && 
          formData.value.householdId && 
          formData.value.description;
+});
+
+const householdOptions = computed(() => {
+  return availableHouseholds.value.map(household => ({
+    label: household.name ? `${household.name} (${household.id})` : household.id,
+    value: household.id
+  }));
+});
+
+async function loadHouseholds() {
+  if (!representativeId.value) {
+    availableHouseholds.value = [];
+    syncHouseholdSelection(true);
+    return;
+  }
+  householdsLoading.value = true;
+  try {
+    const list = await HouseholdService.getHouseholds(representativeId.value);
+    availableHouseholds.value = Array.isArray(list) ? list : [];
+  } catch (error) {
+    console.error('Error loading households for selector:', error);
+    availableHouseholds.value = [];
+  } finally {
+    householdsLoading.value = false;
+    syncHouseholdSelection();
+  }
+}
+
+function syncHouseholdSelection(preferProp = false) {
+  const allowed = new Set(householdOptions.value.map(opt => opt.value));
+  const preferred = preferProp && props.householdId ? props.householdId : formData.value.householdId;
+
+  if (preferred && allowed.has(preferred)) {
+    formData.value.householdId = preferred;
+    return;
+  }
+
+  if (props.householdId && allowed.has(props.householdId)) {
+    formData.value.householdId = props.householdId;
+    return;
+  }
+
+  if (!allowed.size) {
+    formData.value.householdId = props.householdId || '';
+    return;
+  }
+
+  if (!allowed.has(formData.value.householdId)) {
+    formData.value.householdId = householdOptions.value[0].value;
+  }
+}
+
+watch(() => props.householdId, (newId) => {
+  if (newId && !formData.value.householdId) {
+    syncHouseholdSelection(true);
+  }
+});
+
+watch(dialogVisible, async (isOpen) => {
+  if (isOpen) {
+    await loadHouseholds();
+  }
+});
+
+onMounted(async () => {
+  try {
+    const storedUser = localStorage.getItem('user');
+    representativeId.value = storedUser ? JSON.parse(storedUser)?.id ?? null : null;
+  } catch (error) {
+    representativeId.value = null;
+  }
+  resetForm();
+  await loadHouseholds();
 });
 
 /**
@@ -129,6 +206,30 @@ async function handleSubmit() {
     return;
   }
   
+  // Plan Free limit guard based on /households memberCount
+  try {
+    if (formData.value.householdId) {
+      // Fetch household to know its configured cap
+      const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(formData.value.householdId)}`);
+      const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
+      const max = Number(hh?.memberCount || 0);
+      if (Number.isFinite(max) && max > 0) {
+        // Count current members
+        const usersRes = await httpInstance.get(`/users?householdId=${encodeURIComponent(formData.value.householdId)}&role=member`);
+        const current = Array.isArray(usersRes.data) ? usersRes.data.length : 0;
+        if (current >= max) {
+          toast.add({
+            severity: 'warn',
+            summary: 'Límite alcanzado',
+            detail: `Este hogar permite hasta ${max} miembros.`,
+            life: 3000
+          });
+          return;
+        }
+      }
+    }
+  } catch (_) { /* ignore guard errors */ }
+  
   // Check if email already exists
   const emailExists = await checkEmailExists(formData.value.email);
   if (emailExists) {
@@ -153,7 +254,7 @@ async function handleSubmit() {
     const userData = {
       name: formData.value.email.split('@')[0], // Use email prefix as name
       email: formData.value.email.trim(),
-      password: 'temp123', // Temporary password
+      password: '', // Invitations should not set a password
       role: 'member',
       status: 'invited',
       householdId: formData.value.householdId.trim()
@@ -162,13 +263,15 @@ async function handleSubmit() {
     const userResponse = await httpInstance.post('/users', userData);
     const newUser = userResponse.data;
     
-    // Create household member relationship
+    // Create household member relationship (use HM-<timestamp> id format)
+    const nowIso = new Date().toISOString();
     const householdMemberData = {
+      id: `HM-${Date.now()}`,
       userId: newUser.id,
       householdId: formData.value.householdId.trim(),
-      joinedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      joinedAt: nowIso,
+      createdAt: nowIso,
+      updatedAt: nowIso
     };
     
     await httpInstance.post('/householdMember', householdMemberData);
@@ -204,10 +307,11 @@ async function handleSubmit() {
 function resetForm() {
   formData.value = {
     email: '',
-    householdId: props.householdId,
+    householdId: props.householdId || '',
     description: ''
   };
   errors.value = {};
+  syncHouseholdSelection(true);
 }
 
 /**
@@ -246,14 +350,23 @@ function handleCancel() {
       <!-- Household ID Field -->
       <div class="field">
         <label for="householdId" class="field-label">Asignar ID de hogar:</label>
-        <pv-inputtext 
+        <pv-dropdown
           id="householdId"
-          v-model="formData.householdId" 
-          placeholder="HOG-1234567890"
+          v-model="formData.householdId"
+          :options="householdOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Selecciona un hogar"
           class="form-input"
           :class="{ 'p-invalid': errors.householdId }"
-          :disabled="loading"
+          :disabled="loading || !householdOptions.length"
+          :loading="householdsLoading"
+          filter
+          :empty-message="householdsLoading ? 'Cargando hogares...' : 'Sin hogares disponibles'"
         />
+        <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
+          Primero crea un hogar para poder invitar miembros.
+        </small>
         <small v-if="errors.householdId" class="error-message">{{ errors.householdId }}</small>
       </div>
 
@@ -330,6 +443,13 @@ function handleCancel() {
 
 .error-message {
   color: #dc2626;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.helper-message {
+  color: #6b7280;
   font-size: 0.8rem;
   margin-top: 0.25rem;
   display: block;

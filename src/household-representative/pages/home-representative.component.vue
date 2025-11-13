@@ -19,12 +19,13 @@ const menuItems = computed(() => [
   { label: t('sidebar.members'), icon: 'pi pi-users', route: '/dashboard/representative/members' },
   { label: t('sidebar.expenses'), icon: 'pi pi-wallet', route: '/dashboard/representative/expenses' },
   { label: t('sidebar.contributions'), icon: 'pi pi-chart-bar', route: '/dashboard/representative/contribution' },
-  { label: t('sidebar.settings'), icon: 'pi pi-sliders-h', route: '/dashboard/representative/settings' }
+  { label: t('sidebar.settings'), icon: 'pi pi-sliders-h', route: '/dashboard/representative/settings' },
+  { label: t('sidebar.profile'), icon: 'pi pi-user', route: '/dashboard/representative/profile' }
 ]);
 
 const menuGroups = computed(() => ({
   general: menuItems.value.slice(0, 5),
-  tools: [menuItems.value[5], { label: 'Profile', icon: 'pi pi-user', disabled: true }]
+  tools: menuItems.value.slice(5)
 }));
 
 onMounted(async () => {
@@ -152,7 +153,9 @@ async function removeMember(memberId) {
 <style scoped>
 .layout-wrapper {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden;
   background: var(--surface-ground, #f8f9fa);
 }
 
@@ -161,9 +164,12 @@ async function removeMember(memberId) {
   position: sticky;
   top: 0;
   width: 280px;
+  height: 100vh;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
   /* Stronger contrast so items are readable over light backgrounds */
   color: #e6ecff;
   background:
@@ -235,11 +241,12 @@ async function removeMember(memberId) {
 }
 
   .main-content {
-    flex-grow: 1;
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
     padding: 1rem;
     transition: margin-left 0.3s ease;
     overflow-y: auto;
-    width: calc(100% - 280px);
   }
 /* --- Overrides to match mockup (light sidebar) --- */
 .sidebar { background:#fff; color:#0f172a; border-right:1px solid #eef2f7; width:260px; padding-bottom:16px; }
@@ -303,9 +310,7 @@ async function removeMember(memberId) {
 .sidebar-footer{border-top:1px solid #eef2f7;margin-top:auto}
 :deep(.sidebar-footer .p-button){width:100%;justify-content:flex-start;color:#0f172a!important}
 
-.main-content{width:calc(100% - 260px)}
-
-
+.main-content{width:100%}
 /* Footer/log out area styled like mockup */
 .sidebar-footer{ border-top:none; padding: 12px 20px 24px; margin-top:auto; }
 .logout-row{ display:flex; align-items:center; gap:16px; cursor:pointer; }
@@ -328,9 +333,12 @@ async function removeMember(memberId) {
   }
 
   .main-content {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
     padding: 1rem;
     margin-left: 0;
+    overflow-y: auto;
   }
 }
 

@@ -6,8 +6,10 @@ import InputSwitch from 'primevue/inputswitch'
 import Divider from 'primevue/divider'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
+import Dialog from 'primevue/dialog'
 import LanguageSwitcher from '@/shared/components/language-switcher.vue'
 import { useI18n } from 'vue-i18n'
+import httpInstance from '@/shared/services/http.instance.js'
 
 // use the Service layer from the fixed code
 import { SettingsService } from '@/settings/infrastructure/settings-service.js'
@@ -31,6 +33,10 @@ const lastSaved = ref({ ...defaultSettings })
 const saving = ref(false)
 const success = ref('')
 const error = ref('')
+const showDeleteDialog = ref(false)
+const deletingAccount = ref(false)
+const deleteError = ref('')
+const cachedUser = ref(null)
 
 const displayLocale = computed(() => (locale.value || form.value.language || '').toUpperCase())
 
@@ -54,6 +60,7 @@ onMounted(async () => {
     if (!userData) throw new Error('There is no user data!')
 
     const parsed = JSON.parse(userData)
+    cachedUser.value = parsed
     const userId = Number(parsed?.id ?? 0)
     if (!userId) throw new Error('User id is invalid')
 
@@ -124,6 +131,43 @@ function reset() {
   success.value = ''
   error.value = ''
   applyDarkMode(form.value.darkMode)
+}
+
+function openDeleteDialog() {
+  deleteError.value = ''
+  showDeleteDialog.value = true
+}
+
+async function deleteAccount() {
+  if (deletingAccount.value) return
+  deleteError.value = ''
+  deletingAccount.value = true
+  try {
+    const userInfo = cachedUser.value || JSON.parse(localStorage.getItem('user') || '{}')
+    const userId = Number(userInfo?.id || 0)
+    if (!userId) throw new Error('User not found.')
+
+    const householdId = userInfo?.householdId || ''
+    if (householdId) {
+      const { data } = await httpInstance.get(`/users?householdId=${encodeURIComponent(householdId)}&role=member`)
+      const members = Array.isArray(data) ? data : []
+      await Promise.all(
+        members.map(member =>
+          httpInstance.patch(`/users/${member.id}`, { status: 'inactive' })
+        )
+      )
+    }
+
+    await httpInstance.delete(`/users/${userId}`)
+    localStorage.removeItem('user')
+    showDeleteDialog.value = false
+    window.location.replace('/login')
+  } catch (e) {
+    console.error('Failed to delete account', e)
+    deleteError.value = e?.message || 'No se pudo eliminar la cuenta.'
+  } finally {
+    deletingAccount.value = false
+  }
 }
 </script>
 
@@ -243,6 +287,43 @@ function reset() {
           </template>
         </Card>
       </div>
+
+      <div class="col-12">
+        <Card :pt="{ root: { class: 'danger-card my-custom-card' } }">
+          <template #title>Danger zone</template>
+          <template #content>
+            <p class="text-600 mb-3">
+              Eliminar tu cuenta inactivará todas las cuentas de los miembros registrados. Esta acción es irreversible.
+            </p>
+            <div class="flex align-items-center justify-content-between flex-wrap gap-3">
+              <div class="text-600 small-note">
+                Asegúrate de descargar cualquier dato importante antes de continuar.
+              </div>
+              <Button
+                label="Eliminar cuenta"
+                severity="danger"
+                :loading="deletingAccount"
+                @click="openDeleteDialog"
+              />
+            </div>
+          </template>
+        </Card>
+      </div>
+      <Dialog
+        v-model:visible="showDeleteDialog"
+        header="Eliminar cuenta"
+        :modal="true"
+        :style="{ width: '480px' }"
+      >
+        <p>¿Estás seguro de que deseas eliminar tu cuenta? Todos los miembros quedarán inactivos y perderás el acceso.</p>
+        <Message v-if="deleteError" severity="error" :closable="false" class="mb-2">{{ deleteError }}</Message>
+        <template #footer>
+          <div class="flex gap-2">
+            <Button label="Cancelar" outlined @click="showDeleteDialog = false" :disabled="deletingAccount" />
+            <Button label="Eliminar" severity="danger" :loading="deletingAccount" @click="deleteAccount" />
+          </div>
+        </template>
+      </Dialog>
     </div>
   </div>
 </template>
@@ -256,11 +337,28 @@ function reset() {
 }
 .welcome-card .title { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 .welcome-card .subtitle { color: #6b7280; }
+/* Keep cards consistent with the rest of the app theme */
 .my-custom-card {
-  background-color: #2c3e50;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid rgba(15,23,42,.06);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15,23,42,.06);
 }
-.my-custom-button {
-  background-color: black;
+.my-custom-button { /* rely on outlined style; don't force dark bg */
+  background-color: transparent;
+}
+.danger-card {
+  border-color: rgba(248, 113, 113, 0.4) !important;
+  background: #fff5f5 !important;
+}
+.danger-card :deep(.p-card-title) {
+  color: #b91c1c;
+  font-weight: 700;
+}
+.small-note {
+  font-size: 0.85rem;
+  color: #6b7280;
 }
 
 /* PrimeVue Divider internals (scoped) */

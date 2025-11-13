@@ -1,5 +1,6 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue'
+﻿<script setup>
+import { ref, onMounted, computed, watchEffect } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import Toolbar from 'primevue/toolbar'
@@ -15,16 +16,34 @@ import Dropdown from 'primevue/dropdown'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 
+import houseImg from '@/assets/house.png'
+
 import { HouseholdAPI, http as localHttp } from '@/household-member/infrastructure/household.api.js'
 
 const { t } = useI18n()
 
+// Props
+const props = defineProps({
+  householdId: {
+    type: String,
+    default: null
+  }
+})
+
 const householdId = ref('')
 const plan = ref('')
+const households = ref([])
+const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
+
+// Income management for PREMIUM users (global, not per household)
+const userIncomeVisible = ref(false)
+const userTotalIncome = ref(0)
+const incomeAllocations = ref([]) // Array of { householdId, householdName, percentage }
+const userId = ref(null)
 
 // Tabla 1 (FREE): resumen del representante
 const monthlyTotal = ref(0)
@@ -36,14 +55,16 @@ const editAmount = ref(0)
 const editingRow = ref(null)
 const activeContributionId = ref('')
 
-// Tabla 2 (informativa): distribución proporcional acumulativa
+// Tabla 2 (informativa): distribuciÃ³n proporcional acumulativa
 const allocRows = ref([])
 const memberTotals = ref([])
-// Contribución (última) por billId
+// ContribuciÃ³n (Ãºltima) por billId
 const contribByBill = ref(new Map())
 const billsRef = ref([])
+// member-contribution status cache: key `${billId}::${memberId}` -> { id, status, amount, payedAt, contributionId }
+const statusByMemberAndBill = ref(new Map())
 
-// Agrupar por bill para mostrarlos en pestañas
+// Agrupar por bill para mostrarlos en pestaÃ±as
 const allocByBill = computed(() => {
   const map = new Map()
   for (const r of allocRows.value || []) {
@@ -68,7 +89,7 @@ const allocByBill = computed(() => {
   return arr
 })
 
-// Grupos que tienen una contribuci�n creada (para renderizar una "ventana" por bill)
+// Grupos que tienen una contribución creada (para renderizar una "ventana" por bill)
 const groupsWithContribution = computed(() => {
   const groups = allocByBill.value || []
   const byId = new Map(groups.map(g => [String(g.billId), g]))
@@ -123,19 +144,68 @@ function formatDate(iso){
   try { return new Date(iso).toLocaleDateString() } catch { return iso }
 }
 
+function openHousehold(h){
+  householdId.value = String(h?.id || '')
+  if (householdId.value) {
+    // Update URL with household ID
+    router.push(`/dashboard/representative/contribution/${householdId.value}`)
+    loadData()
+  }
+}
+
+function backToHouseholds(){
+  householdId.value = ''
+  // reset local views
+  allocRows.value = []
+  memberTotals.value = []
+  rows.value = [{ lastIncome: 0, myTotal: 0, compliance: 0, memberCount: 0, memberId: '' }]
+  // Update URL to remove household ID
+  router.push('/dashboard/representative/contribution')
+  // reload premium list
+  loadPremiumHouseholds()
+}
+
 onMounted(async () => {
   try {
     const raw = localStorage.getItem('user')
     if (raw) {
       const u = JSON.parse(raw)
-      householdId.value = u?.householdId || ''
+      // For PREMIUM: householdId comes from URL params only, not from localStorage
+      // For FREE: householdId comes from localStorage (single household)
+      if (u?.plan === 'FREE') {
+        householdId.value = u?.householdId || ''
+      } else {
+        // PREMIUM: initialize empty, will be set by route param
+        householdId.value = ''
+      }
       plan.value = u?.plan || ''
+      userId.value = u?.id
     }
   } catch {}
+  
+  // Check if householdId is passed as prop (from URL params)
+  if (props.householdId) {
+    householdId.value = String(props.householdId)
+  }
+  
   if (plan.value === 'FREE') await loadData()
+  else await loadPremiumHouseholds()
+})
+
+// Watch for changes to householdId from URL params (for PREMIUM users)
+watchEffect(() => {
+  if (plan.value !== 'FREE' && householdId.value) {
+    loadData()
+  }
 })
 
 async function loadData(){
+  // Validate householdId is set before loading
+  if (!householdId.value) {
+    console.warn('No household ID set')
+    return
+  }
+  
   loading.value = true
   error.value = ''
   try{
@@ -174,7 +244,7 @@ async function loadData(){
     const rep = JSON.parse(localStorage.getItem('user') || '{}')
     const repMember = m.find(mm => String(mm.userId) === String(rep?.id)) || null
 
-    const myList = repMember ? (Array.isArray(memberContribs)?memberContribs:[]).filter(mc => String(mc.memberId) === String(repMember.id)) : []
+    const myList = repMember ? (Array.isArray(memberContribs)?memberContribs:[]).filter(mc => String(mc.memberId) === String(repMember.id) && Number(mc.status || 0) === 1) : []
     const myTotal = myList.reduce((a,mc)=> a + Number(mc.amount || 0), 0)
     const lastIncome = Number(repMember?.income || 0)
 
@@ -216,7 +286,7 @@ async function saveIncome(){
     error.value = e?.message || 'Could not update income';
   }
 }
-// Crear contribución para un bill
+// Crear contribuciÃ³n para un bill
 const createContribVisible = ref(false)
 const currentBill = ref(null)
 const contribDesc = ref('')
@@ -237,6 +307,20 @@ async function createContribution(){
     const billId = String(selectedBillId.value || currentBill.value?.billId || '')
     if(!billId) throw new Error('Bill not selected')
     if(!householdId.value) throw new Error('Invalid householdId')
+    
+    // Get the bill to validate paymentDay
+    const bill = billsRef.value.find(b => String(b.id) === billId)
+    if(!bill) throw new Error('Bill not found')
+    
+    // Validate deadlineForMembers is not after paymentDay
+    if(contribDeadline.value && bill.paymentDay) {
+      const deadline = new Date(contribDeadline.value)
+      const paymentDay = new Date(bill.paymentDay)
+      if(deadline > paymentDay) {
+        throw new Error('Deadline for members cannot be after the payment day')
+      }
+    }
+    
     const now = new Date().toISOString()
     const payload = {
       id: `CN-${Date.now()}`,
@@ -275,6 +359,22 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
     // Only include bills that currently have a contribution created
     const contributedIds = new Set(Array.from((contribByBill.value || new Map()).keys()).map(String))
 
+    // Build reverse map: contributionId -> billId (for latest contributions per bill)
+    const reverseContrib = new Map()
+    for (const [bId, c] of (contribByBill.value || new Map()).entries()) {
+      if (c?.id) reverseContrib.set(String(c.id), String(bId))
+    }
+    // Current statuses coming from memberContributions
+    const statusMap = new Map()
+    const mcList = Array.isArray(memberContribs) ? memberContribs : []
+    for (const mc of mcList) {
+      const cid = String(mc.contributionId || '')
+      const bId = reverseContrib.get(cid)
+      if (!bId) continue
+      const key = `${bId}::${String(mc.memberId)}`
+      statusMap.set(key, { id: mc.id, status: Number(mc.status || 0), amount: Number(mc.amount || 0), payedAt: mc.payedAt || null, contributionId: cid })
+    }
+
     for (const bill of bs) {
       if (!contributedIds.has(String(bill?.id || ''))) continue
       const amount = Number(bill?.amount || 0)
@@ -286,6 +386,8 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
         const assigned = amount * percent
 
         const u = userById.get(String(m.userId)) || {}
+        const sKey = `${String(bill?.id || '')}::${String(m?.id || '')}`
+        const sObj = statusMap.get(sKey)
         rows.push({
           billId: bill?.id || '',
           billDesc: bill?.description || '',
@@ -295,7 +397,10 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
           incomeBefore: income,
           percent: Number((percent * 100).toFixed(2)),
           assigned: Number(assigned.toFixed(2)),
-          paymentDay: bill?.paymentDay || ''
+          paymentDay: bill?.paymentDay || '',
+          status: Number(sObj?.status || 0),
+          memberContributionId: sObj?.id || '',
+          contributionId: (contribByBill.value.get(String(bill?.id || ''))?.id) || ''
         })
 
         const key = String(m?.id || '')
@@ -312,10 +417,210 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
     }
 
     allocRows.value = rows
+    statusByMemberAndBill.value = statusMap
     memberTotals.value = totals
   } catch (e) {
     console.error(e)
     error.value = e?.message || 'Could not recalculate distribution'
+  }
+}
+
+async function loadPremiumHouseholds(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('user') || '{}')
+    const repId = raw?.id
+    if(!repId) return
+    const list = await HouseholdAPI.householdsByRepresentative(repId)
+    households.value = Array.isArray(list) ? list : []
+    await loadUserIncome(repId)
+  }catch(e){ console.error(e) }
+}
+
+async function loadUserIncome(repId){
+  try{
+    // Asegurar que tenemos households cargados
+    if (!households.value || households.value.length === 0) {
+      const list = await HouseholdAPI.householdsByRepresentative(repId)
+      households.value = Array.isArray(list) ? list : []
+    }
+    
+    const userIncome = await localHttp.get(`/userIncome?userId=${repId}`)
+    const ui = Array.isArray(userIncome.data) ? userIncome.data[0] : userIncome.data
+    userTotalIncome.value = Number(ui?.income || 0)
+    
+    // Get allocations from incomeAllocation table
+    const allocations = await localHttp.get(`/incomeAllocation?userId=${repId}`)
+    const allocs = Array.isArray(allocations.data) ? allocations.data : []
+    
+    // If no allocations exist, create them from householdMember or from households
+    if (allocs.length === 0) {
+      // Get householdMember records for this user
+      const hmResponse = await localHttp.get(`/householdMember?userId=${repId}`)
+      const hmList = Array.isArray(hmResponse.data) ? hmResponse.data : (hmResponse.data ? [hmResponse.data] : [])
+      
+      if (hmList.length > 0) {
+        // Build allocation array with household names
+        incomeAllocations.value = hmList.map(hm => {
+          const household = households.value.find(h => h.id === hm.householdId)
+          // Calculate percentage from stored income
+          const percentage = userTotalIncome.value > 0 ? (Number(hm.income || 0) / userTotalIncome.value * 100) : 0
+          return {
+            id: `IA-${repId}-${hm.householdId}`,
+            householdId: hm.householdId,
+            householdName: household?.name || hm.householdId,
+            percentage: Number(percentage.toFixed(2))
+          }
+        })
+      } else {
+        // Create empty allocations for all households
+        incomeAllocations.value = households.value.map((h, idx) => {
+          const percentage = households.value.length > 0 ? (100 / households.value.length) : 0
+          return {
+            id: `IA-${repId}-${h.id}`,
+            householdId: h.id,
+            householdName: h.name,
+            percentage: idx === 0 ? (100 - (percentage * (households.value.length - 1))) : percentage
+          }
+        })
+      }
+    } else {
+      // Build allocation array with household names
+      incomeAllocations.value = allocs.map(a => {
+        const household = households.value.find(h => h.id === a.householdId)
+        return {
+          id: a.id,
+          householdId: a.householdId,
+          householdName: household?.name || a.householdId,
+          percentage: a.percentage
+        }
+      })
+    }
+  }catch(e){
+    console.error(e)
+  }
+}
+
+function openEditUserIncome(){
+  userIncomeVisible.value = true
+}
+
+async function saveUserIncome(){
+  error.value = ''
+  success.value = ''
+  try{
+    if(userTotalIncome.value <= 0) throw new Error('Enter an amount greater than zero')
+    
+    // Validate percentages sum to 100
+    const totalPercentage = incomeAllocations.value.reduce((sum, a) => sum + Number(a.percentage || 0), 0)
+    if(Math.abs(totalPercentage - 100) > 0.01) throw new Error(`Percentages must sum to 100% (current: ${totalPercentage}%)`)
+    
+    const now = new Date().toISOString()
+    
+    // Save or update user income
+    const userIncomeData = {
+      id: `UI-${userId.value}`,
+      userId: userId.value,
+      income: userTotalIncome.value.toFixed(2),
+      updatedAt: now
+    }
+    
+    try {
+      await localHttp.patch(`/userIncome/UI-${userId.value}`, userIncomeData)
+    } catch {
+      userIncomeData.createdAt = now
+      await localHttp.post('/userIncome', userIncomeData)
+    }
+    
+    // Update householdMember records with calculated income (total income * percentage)
+    for (const alloc of incomeAllocations.value) {
+      const calculatedIncome = (userTotalIncome.value * Number(alloc.percentage || 0) / 100).toFixed(2)
+      
+      // Find existing householdMember for this user and household
+      const existingMember = await localHttp.get(`/householdMember?userId=${userId.value}&householdId=${alloc.householdId}`)
+      const memberList = Array.isArray(existingMember.data) ? existingMember.data : [existingMember.data]
+      
+      if (memberList.length > 0) {
+        // Update existing householdMember
+        const memberId = memberList[0].id
+        await localHttp.patch(`/householdMember/${memberId}`, {
+          income: calculatedIncome,
+          updatedAt: now
+        })
+      } else {
+        // Create new householdMember if doesn't exist
+        const newMember = {
+          id: `HM-${Date.now()}`,
+          userId: userId.value,
+          householdId: alloc.householdId,
+          income: calculatedIncome,
+          joinedAt: now,
+          createdAt: now,
+          updatedAt: now
+        }
+        await localHttp.post('/householdMember', newMember)
+      }
+      
+      // Save allocation for reference
+      const allocData = {
+        userId: userId.value,
+        householdId: alloc.householdId,
+        percentage: Number(alloc.percentage || 0),
+        updatedAt: now
+      }
+      
+      try {
+        await localHttp.patch(`/incomeAllocation/${alloc.id}`, allocData)
+      } catch {
+        allocData.id = `IA-${userId.value}-${alloc.householdId}`
+        allocData.createdAt = now
+        await localHttp.post('/incomeAllocation', allocData)
+      }
+    }
+    
+    success.value = 'Income and allocations updated successfully'
+    userIncomeVisible.value = false
+    await loadUserIncome(userId.value)
+  }catch(e){
+    console.error(e)
+    error.value = e?.message || 'Could not update income'
+  }
+}
+
+async function toggleMemberStatus(row){
+  try{
+    if(!row?.memberId || !row?.billId) return
+    // Need contribution id for this bill
+    const c = contribByBill.value.get(String(row.billId))
+    if(!c?.id) throw new Error('No contribution found for this bill')
+    const key = `${String(row.billId)}::${String(row.memberId)}`
+    const current = statusByMemberAndBill.value.get(key)
+    const now = new Date().toISOString()
+    if(current?.id){
+      const newStatus = current.status ? 0 : 1
+      const payload = { status: newStatus, updatedAt: now, payedAt: newStatus ? now : null, amount: Number(row.assigned || 0).toFixed(2) }
+      await localHttp.patch(`/memberContributions/${current.id}`, payload)
+      statusByMemberAndBill.value.set(key, { ...current, ...payload })
+      row.status = newStatus
+      await loadData()
+    } else {
+      const payload = {
+        id: `MC-${Date.now()}`,
+        contributionId: c.id,
+        memberId: row.memberId,
+        amount: Number(row.assigned || 0).toFixed(2),
+        status: 1,
+        payedAt: now,
+        createdAt: now,
+        updatedAt: now
+      }
+      await localHttp.post('/memberContributions', payload)
+      statusByMemberAndBill.value.set(key, payload)
+      row.status = 1
+      await loadData()
+    }
+  }catch(e){
+    console.error(e)
+    error.value = e?.message || 'Could not update status'
   }
 }
 
@@ -332,11 +637,77 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
       </template>
     </Toolbar>
 
-    <template v-if="plan !== 'FREE'">
-      <Message severity="warn" :closable="false">This view applies to the FREE plan.</Message>
+    <!-- PREMIUM: households selector cards when no household chosen -->
+    <template v-if="plan !== 'FREE' && !householdId">
+      <div class="premium-houses">
+        <div class="flex justify-content-between align-items-center mb-3">
+          <h3 class="m-0">Your households</h3>
+          <Button size="small" label="Edit income" @click="openEditUserIncome" />
+        </div>
+        <div class="grid">
+          <div v-for="h in households" :key="h.id" class="col-12">
+            <div class="mock-card" @click="openHousehold(h)" role="button" tabindex="0">
+              <div class="mock-left">
+                <div class="mock-illus">
+                  <img :src="houseImg" alt="House icon" class="mock-illus-img" />
+                </div>
+                <span class="dot d1"></span>
+                <span class="dot d2"></span>
+                <span class="dot d3"></span>
+              </div>
+              <div class="mock-content">
+                <div class="mock-title">{{ h.name || 'Household' }}</div>
+                <div class="mock-desc">{{ h.description || 'No description' }}</div>
+                <div class="mock-id">ID: {{ h.id }}</div>
+              </div>
+              <button type="button" class="mock-cta" title="Open" @click.stop="openHousehold(h)">
+                <i class="pi pi-angle-right"></i>
+              </button>
+            </div>
+          </div>
+          <div v-if="!households.length" class="col-12"><Message :closable="false">No households found.</Message></div>
+        </div>
+      </div>
+      
+      <!-- Dialog to edit user income and allocations -->
+      <Dialog v-model:visible="userIncomeVisible" modal header="Edit income and allocations" :style="{ width: '40rem' }">
+        <div class="flex flex-column gap-3">
+          <div>
+            <label class="block mb-2">Total income</label>
+            <InputNumber v-model="userTotalIncome" mode="currency" currency="PEN" :min="0" :step="1" :useGrouping="true" class="w-full" />
+          </div>
+          
+          <div>
+            <label class="block mb-2">Allocate by household</label>
+            <DataTable :value="incomeAllocations" class="p-datatable-sm">
+              <Column field="householdName" header="Household" />
+              <Column field="percentage" header="Percentage (%)">
+                <template #body="{ data }">
+                  <InputNumber v-model="data.percentage" :min="0" :max="100" :step="0.1" suffix=" %" />
+                </template>
+              </Column>
+            </DataTable>
+            <div class="mt-2 text-sm">
+              <span :style="{ color: Math.abs((incomeAllocations.reduce((sum, a) => sum + Number(a.percentage || 0), 0)) - 100) < 0.01 ? '#22c55e' : '#ef4444' }">
+                Total: {{ (incomeAllocations.reduce((sum, a) => sum + Number(a.percentage || 0), 0)).toFixed(2) }}%
+              </span>
+            </div>
+          </div>
+          
+          <div class="flex justify-content-end gap-2">
+            <Button label="Cancel" severity="secondary" @click="userIncomeVisible = false" />
+            <Button label="Save" @click="saveUserIncome" />
+          </div>
+        </div>
+      </Dialog>
     </template>
 
+    <!-- Contributions content: for FREE or when a PREMIUM household is selected -->
     <template v-else>
+      <!-- Back to households for PREMIUM -->
+      <div v-if="plan !== 'FREE'" class="mb-2">
+        <Button size="small" icon="pi pi-arrow-left" label="Back to households" outlined @click="backToHouseholds" />
+      </div>
       <!-- Resumen: tarjetas en lugar de tabla -->
       <div class="flex justify-content-end mb-2">
         <Button size="small" label="Edit income" @click="openEdit(rows[0])" />
@@ -375,7 +746,7 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
         </div>
       </Dialog>
 
-      <!-- Panels por cada bill con contribuci�n -->
+      <!-- Panels por cada bill con contribución -->
       <h3 class="mt-5">Cumulative proportional distribution</h3>
       <div class="flex justify-content-end mb-2">
         <Button size="small" label="Add contribution" @click="openCreateContribution({})" />
@@ -399,15 +770,26 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
                 <Column field="assigned" header="Assigned amount">
                   <template #body="{ data }">{{ formatMoney(data.assigned) }}</template>
                 </Column>
+                <Column field="status" header="Status">
+                  <template #body="{ data }">
+                    <Tag :severity="data.status ? 'success' : 'warning'" :value="data.status ? 'Completed' : 'Pending'" />
+                  </template>
+                </Column>
+                <Column header="Actions">
+                  <template #body="{ data }">
+                    <Button size="small" :label="data.status ? 'Mark pending' : 'Mark paid'" :icon="data.status ? 'pi pi-undo' : 'pi pi-check'" @click="toggleMemberStatus(data)" />
+                  </template>
+                </Column>
               </DataTable>
             </div>
           </div>
         </template>
         <div v-else class="empty-panel">No data</div>
       </div>
-      <!-- Dialog crear contribución -->
+      <!-- Dialog crear contribuciÃ³n -->
       <Dialog v-model:visible="createContribVisible" modal header="Create contribution" :style="{ width: '36rem' }">
         <div class="flex flex-column gap-3">
+          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
           <div>
             <label class="block mb-2">Select a bill</label>
             <Dropdown class="w-full" v-model="selectedBillId" :options="billOptions" optionLabel="label" optionValue="value" placeholder="Choose a bill" />
@@ -418,7 +800,10 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
           </div>
           <div>
             <label class="block mb-2">Deadline</label>
-            <Calendar v-model="contribDeadline" showIcon :manualInput="true" :pt="{ input: { class: 'w-full' } }" />
+            <Calendar v-model="contribDeadline" showIcon :manualInput="true" :maxDate="currentBill?.paymentDay ? new Date(currentBill.paymentDay) : null" :pt="{ input: { class: 'w-full' } }" />
+            <small class="text-xs text-color-secondary" v-if="currentBill?.paymentDay">
+              (Must be before or on {{ new Date(currentBill.paymentDay).toLocaleDateString() }})
+            </small>
           </div>
           <div class="flex justify-content-end gap-2">
             <Button label="Cancel" severity="secondary" @click="createContribVisible = false" />
@@ -465,9 +850,9 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
 }
 :deep(.bill-panel-container) { border: 1px solid #9ec9ff; border-radius: 12px; padding: 0; }
 
-/* Panel vacío (mock) */
+/* Panel vacÃ­o (mock) */
 .empty-panel { display: flex; align-items: center; justify-content: center; min-height: 280px; }
-/* Ocultar tabla y textos; dejar solo el bot�n */
+/* Ocultar tabla y textos; dejar solo el botón */
 .bill-title { display:none; }
 .bill-meta span { display:none; }
 
@@ -488,7 +873,32 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
 .bill-header { justify-content: space-between !important; }
 .bill-header .pi { margin-left: auto; color: #111827; font-size: 0.875rem; }
 .bill-content { padding-top: .5rem; }
+
+/* Premium households grid */
+.premium-houses .mock-card { position: relative; display:flex; align-items:center; gap:2rem; padding:2rem; border-radius:24px; background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%); border:1px solid rgba(15,23,42,.08); overflow:hidden; cursor:pointer; transition: all 0.3s ease; }
+.premium-houses .mock-card:hover { transform: translateY(-2px); }
+.premium-houses .mock-left { position: relative; width: 160px; height: 160px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; }
+.premium-houses .mock-illus { width:140px; height:140px; background:linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%); border-radius:20px; display:flex; align-items:center; justify-content:center; }
+.premium-houses .mock-illus-img { width:100px; height:100px; object-fit:contain; }
+.premium-houses .dot { position:absolute; background:#ef4444; border-radius:999px; }
+.premium-houses .dot.d1 { width:10px; height:10px; top:6px; left:10px; }
+.premium-houses .dot.d2 { width:16px; height:16px; top:8px; right:12px; }
+.premium-houses .dot.d3 { width:6px; height:6px; bottom:14px; left:28px; }
+.premium-houses .mock-content { flex:1 1 auto; min-width:0; }
+.premium-houses .mock-title { font-weight:800; color:#0f172a; font-size:1.375rem; line-height:1.3; }
+.premium-houses .mock-desc { margin-top:.5rem; color:#6b7280; font-weight:500; font-size:1rem; }
+.premium-houses .mock-id { margin-top:.5rem; color:#9ca3af; font-size:.875rem; font-weight:500; }
+.premium-houses .mock-cta { position:absolute; right:20px; bottom:20px; display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:999px; background:#ef4444; color:#fff; border:none; cursor:pointer; transition: all .2s ease; font-size:1.25rem; }
+.premium-houses .mock-cta:hover { transform: translateY(-3px); }
+.premium-houses .mock-cta:active { transform: translateY(-1px); }
+
+/* Income allocation dialog styles */
+.text-sm { font-size: 0.875rem; }
+:deep(.p-datatable-sm .p-datatable-thead > tr > th) { padding: 0.5rem; }
+:deep(.p-datatable-sm .p-datatable-tbody > tr > td) { padding: 0.5rem; }
+:deep(.p-inputnumber) { width: 100%; }
 </style>
+
 
 
 
