@@ -338,7 +338,7 @@ onMounted(bootstrap);
               <label>Nombre</label>
               <pv-inputtext
                 v-model="form.firstName"
-                placeholder="Lourdes"
+                placeholder=""
                 :class="{ 'p-invalid': !!fieldErrors.firstName }"
                 :disabled="!canEdit"
               />
@@ -349,7 +349,7 @@ onMounted(bootstrap);
               <label>Apellido</label>
               <pv-inputtext
                 v-model="form.lastName"
-                placeholder="Vivas"
+                placeholder=""
                 :class="{ 'p-invalid': !!fieldErrors.lastName }"
                 :disabled="!canEdit"
               />
