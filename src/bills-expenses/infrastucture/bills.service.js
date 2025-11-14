@@ -5,7 +5,11 @@ import { BillApi } from "@/bills-expenses/infrastucture/bills-api.js";
 export class BillService {
     static async createBill(data) {
         const nowIso = new Date().toISOString();
+        // Generate ID in the same style as household (time-based)
+        const genId = () => `BG-${Date.now()}`;
         const bill = new Bill({
+            // ensure an id with correct pattern
+            id: (data?.id && /^BG-\d+$/.test(String(data.id))) ? String(data.id) : genId(),
             ...data,
             createdAt: data?.createdAt || nowIso,
             updatedAt: data?.updatedAt || nowIso,
@@ -13,7 +17,14 @@ export class BillService {
         const errors = bill.validate();
         if (errors) throw errors;
 
-        const created = await BillApi.create(toDTO(bill));
+        // Try to enforce our chosen id first using PUT; if the
+        // backend doesn't allow it, fall back to POST.
+        let created;
+        try {
+            created = await BillApi.createWithId(toDTO(bill));
+        } catch (e) {
+            created = await BillApi.create(toDTO(bill));
+        }
         return toEntity(created);
     }
 

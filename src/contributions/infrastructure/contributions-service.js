@@ -31,7 +31,7 @@ export class MemberContributionService {
     }
 
     static async listByBillId(billId) {
-        if (!contributionId) throw new Error("contributionId is not valid");
+        if (!billId) throw new Error("billId is not valid");
         const arr = await MemberContributionApi.listByBillId(billId);
         return (arr || []).map(toEntity);
     }

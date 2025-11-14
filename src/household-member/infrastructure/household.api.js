@@ -1,7 +1,7 @@
 ﻿import axios from 'axios';
 
 export const http = axios.create({
-    baseURL: 'http://localhost:3000',
+    baseURL: `${import.meta.env.VITE_API_BASE_URL}`,
     withCredentials: false
 });
 
@@ -14,6 +14,7 @@ export const HouseholdAPI = {
     billsByHousehold: (householdId) => get(`/bills?householdId=${householdId}`),
     contributionsByHousehold: (householdId) => get(`/contributions?householdId=${householdId}`),
     householdById: (id) => get(`/households?id=${id}`),
+    householdsByRepresentative: (representativeId) => get(`/households?representativeId=${representativeId}`),
 
     createMember: async (payload) => (await http.post('/householdMember', payload)).data
 };

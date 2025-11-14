@@ -4,7 +4,17 @@ import { SettingsApi } from "@/settings/infrastructure/settings-api.js";
 
 export class SettingsService {
     static async createSettings(settingsData) {
-        const settings = new Settings(settingsData);
+        const nowISO = new Date().toISOString();
+        const normalizedData = {
+            ...settingsData,
+            // force numeric identifiers so json-server keeps them as numbers
+            id: Number(settingsData?.id) || Date.now(),
+            userId: Number(settingsData?.userId || 0),
+            createdAt: settingsData?.createdAt || nowISO,
+            updatedAt: settingsData?.updatedAt || nowISO,
+        };
+
+        const settings = new Settings(normalizedData);
         const errors = settings.validate();
         if (errors) throw errors;
 

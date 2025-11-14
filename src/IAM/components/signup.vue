@@ -25,9 +25,9 @@ const error = ref('');
 const success = ref('');
 const generatedHouseholdId = ref('');
 
-// Plan selection modal
+// Plan selection modal (representatives only)
 const planDialogVisible = ref(false);
-const selectedPlan = ref('FREE'); // FREE | PREMIUM
+const selectedPlan = ref('FREE'); // FREE | PREMIUM (only for representatives)
 
 function validateEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -64,21 +64,50 @@ async function signUp() {
     if (!isValid) return (error.value = 'Invalid Household ID. Please verify and try again.');
   }
 
-  // Show plan selection dialog
-  planDialogVisible.value = true;
+  // Representatives choose a plan; members inherit the representative's plan automatically
+  if (userType.value === 'representative') {
+    planDialogVisible.value = true;
+  } else {
+    await confirmPlanAndCreate();
+  }
+}
+
+async function resolvePlanForUserType() {
+  // Members inherit the representative's plan
+  if (userType.value === 'member') {
+    try {
+      // Find household and representative
+      const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(householdId.value)}`);
+      const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
+      if (hh?.representativeId) {
+        const repRes = await httpInstance.get(`/users?id=${encodeURIComponent(hh.representativeId)}`);
+        const rep = Array.isArray(repRes.data) ? repRes.data[0] : repRes.data;
+        return rep?.plan || 'FREE';
+      }
+    } catch (_) { /* fallback below */ }
+    return 'FREE';
+  }
+  // Representatives use the selected plan
+  return selectedPlan.value;
 }
 
 async function confirmPlanAndCreate() {
   try {
+    const planToApply = await resolvePlanForUserType();
+    const normalizedEmail = String(email.value).trim().toLowerCase();
+    // If an invited user already exists with this email, upgrade it instead of creating a duplicate
+    const existingRes = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
+    const existingUsers = (existingRes.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
+
     const userId = Date.now();
     let userData = {
       id: userId,
       name: name.value,
-      email: email.value,
+      email: normalizedEmail,
       password: password.value,
       role: userType.value,
       status: 'active',
-      plan: selectedPlan.value
+      plan: planToApply
     };
 
     if (userType.value === 'representative') {
@@ -101,6 +130,34 @@ async function confirmPlanAndCreate() {
     } else {
       userData.householdId = householdId.value;
       userData.isNewUser = false;
+    }
+
+    // Upgrade invited user if present
+    if (existingUsers.length > 0) {
+      const invited = existingUsers.find(u => String(u.status || '').toLowerCase() === 'invited');
+      if (invited) {
+        const patchData = {
+          name: userData.name,
+          password: userData.password,
+          role: 'member',
+          status: 'active',
+          plan: userData.plan,
+          householdId: userData.householdId,
+          isNewUser: false
+        };
+        const response = await httpInstance.patch(`/users/${invited.id}`, patchData);
+        if (response.status === 200) {
+          planDialogVisible.value = false;
+          success.value = 'Account activated from invitation! You can sign in now.';
+          setTimeout(() => router.push('/login'), 2500);
+          return;
+        }
+      } else {
+        // An active user already exists with this email
+        planDialogVisible.value = false;
+        error.value = 'This email is already registered. Please sign in.';
+        return;
+      }
     }
 
     const response = await httpInstance.post('/users', userData);

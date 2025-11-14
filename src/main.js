@@ -3,6 +3,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 
 import PrimeVue from 'primevue/config';
+import { createPinia } from 'pinia';
 import Aura from '@primeuix/themes/aura';
 import {$t} from '@primeuix/styled';
 import 'primeicons/primeicons.css';
@@ -28,7 +29,7 @@ import {
     DialogService
 } from "primevue";
 import router from "@/router/index.js";
-import i18n from "@/i18n.js";
+import i18n, { setUpLocalePersistence } from "@/i18n.js";
 import Textarea from "primevue/textarea";
 // utility classes (grid, spacing, flex, responsive)
 
@@ -43,8 +44,8 @@ app.use(PrimeVue, {
     theme: {
         preset: Aura,
         options: {
-            // optional tweaks
-            darkModeSelector: 'system' // 'class' | 'media' | 'system'
+            // Control manual del modo oscuro para evitar que tome el del sistema
+            darkModeSelector: 'class' // 'class' | 'media' | 'system'
         }
     }
 });
@@ -66,8 +67,6 @@ component('pv-toolbar', Toolbar).
 component('pv-progressbar', ProgressBar).
 component('pv-card', Card).
 component('pv-tag', Tag).
-component('pv-column', Column).
-component('pv-datatable', DataTable).
     component('pv-textarea', Textarea);
 
 setUpLocalePersistence();

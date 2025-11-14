@@ -9,10 +9,13 @@ import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { HouseholdService } from '@/households/infrastructure/household.service';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
 const confirm = useConfirm();
 const toast = useToast();
+const { t } = useI18n();
+
 const households = ref([]);
 const loading = ref(false);
 const canCreate = ref(true);
@@ -42,7 +45,12 @@ function formatDate(date) {
 async function editHousehold(household) {
   try {
     if (!household?.id) {
-      toast.add({ severity: 'warn', summary: 'Atención', detail: 'El hogar no tiene un ID válido', life: 3000 });
+      toast.add({
+        severity: 'warn',
+        summary: t('households.list.toast.invalidId.summary'),
+        detail: t('households.list.toast.invalidId.detail'),
+        life: 3000
+      });
       return;
     }
     await router.push({
@@ -51,7 +59,12 @@ async function editHousehold(household) {
     });
   } catch (error) {
     console.error('Error navigating to household:', error);
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo abrir el hogar', life: 3000 });
+    toast.add({
+      severity: 'error',
+      summary: t('households.list.toast.navigateError.summary'),
+      detail: t('households.list.toast.navigateError.detail'),
+      life: 3000
+    });
   }
 }
 
@@ -62,13 +75,18 @@ function newHousehold() {
 
 function confirmDelete(household) {
   confirm.require({
-    message: `¿Está seguro que desea eliminar el hogar "${household.name}"?`,
-    header: 'Confirmar eliminación',
+    message: t('households.list.confirmDelete.message', { name: household.name }),
+    header: t('households.list.confirmDelete.header'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: () => deleteHousehold(household),
     reject: () => {
-      toast.add({ severity: 'info', summary: 'Cancelado', detail: 'Operación cancelada', life: 3000 });
+      toast.add({
+        severity: 'info',
+        summary: t('households.list.toast.cancelled.summary'),
+        detail: t('households.list.toast.cancelled.detail'),
+        life: 3000
+      });
     }
   });
 }
@@ -78,10 +96,20 @@ async function deleteHousehold(household) {
     loading.value = true;
     await HouseholdService.deleteHousehold(household.id);
     await loadHouseholds();
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Hogar eliminado correctamente', life: 3000 });
+    toast.add({
+      severity: 'success',
+      summary: t('households.list.toast.deleteSuccess.summary'),
+      detail: t('households.list.toast.deleteSuccess.detail'),
+      life: 3000
+    });
   } catch (error) {
     console.error('Error deleting household:', error);
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el hogar', life: 3000 });
+    toast.add({
+      severity: 'error',
+      summary: t('households.list.toast.deleteError.summary'),
+      detail: t('households.list.toast.deleteError.detail'),
+      life: 3000
+    });
   } finally {
     loading.value = false;
   }
@@ -91,8 +119,8 @@ async function deleteHousehold(household) {
 <template>
   <div class="card">
     <div class="flex justify-content-between align-items-center mb-4 border-round secondary-card">
-      <h2 style="color: black !important;">Hogares</h2>
-      <Button label="Crear hogar" icon="pi pi-plus" @click="newHousehold" :disabled="!canCreate" />
+      <h2 style="color: black !important;">{{ t('households.list.title') }}</h2>
+      <Button :label="t('households.list.create')" icon="pi pi-plus" @click="newHousehold" :disabled="!canCreate" />
     </div>
 
     <DataTable
@@ -107,15 +135,15 @@ async function deleteHousehold(household) {
       <Column header="#" style="width:3.5rem; text-align:center">
         <template #body="slotProps">{{ (slotProps.index ?? 0) + 1 }}</template>
       </Column>
-      <Column field="id" header="ID" sortable />
-      <Column field="name" header="Nombre" sortable />
-      <Column field="description" header="Descripción" />
-      <Column field="memberCount" header="Miembros" sortable />
-      <Column field="startDate" header="Fecha de inicio" sortable>
+      <Column field="id" :header="t('households.list.table.id')" sortable />
+      <Column field="name" :header="t('households.list.table.name')" sortable />
+      <Column field="description" :header="t('households.list.table.description')" />
+      <Column field="memberCount" :header="t('households.list.table.members')" sortable />
+      <Column field="startDate" :header="t('households.list.table.startDate')" sortable>
         <template #body="slotProps">{{ formatDate(slotProps.data.startDate) }}</template>
       </Column>
-      <Column field="currency" header="Moneda" sortable />
-      <Column header="Acciones" :exportable="false" style="min-width:8rem">
+      <Column field="currency" :header="t('households.list.table.currency')" sortable />
+      <Column :header="t('households.list.table.actions')" :exportable="false" style="min-width:8rem">
         <template #body="slotProps">
           <div class="flex gap-2">
             <Button
@@ -145,8 +173,7 @@ async function deleteHousehold(household) {
 </template>
 
 <style scoped>
-
-.secondary-card{
+.secondary-card {
   padding: 1.25rem 1.5rem;
   border: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
@@ -163,11 +190,10 @@ async function deleteHousehold(household) {
   color: black;
 }
 
-/* Households table — modern soft look */
+/* Households table - modern soft look */
 :deep(.households-table) {
   border-radius: 16px;
   overflow: hidden;
-  /* Glassy panel */
   background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 100%);
   border: 1px solid rgba(255,255,255,0.35);
   backdrop-filter: blur(10px) saturate(140%);
@@ -192,7 +218,9 @@ async function deleteHousehold(household) {
 :deep(.households-table .p-datatable-tbody > tr > td) {
   padding: 16px 18px;
   border-bottom: 1px solid rgba(226,232,240,0.9);
-  border-top: none; border-left: none; border-right: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   background: rgba(255,255,255,0.96);
 }
 
@@ -205,17 +233,16 @@ async function deleteHousehold(household) {
   box-shadow: 0 10px 22px rgba(15,23,42,.06);
 }
 
-/* Round the row by radiusing the outer cells */
 :deep(.households-table .p-datatable-tbody > tr > td:first-child) {
   border-top-left-radius: 14px;
   border-bottom-left-radius: 14px;
 }
+
 :deep(.households-table .p-datatable-tbody > tr > td:last-child) {
   border-top-right-radius: 14px;
   border-bottom-right-radius: 14px;
 }
 
-/* Paginator */
 :deep(.households-table .p-paginator) {
   background: transparent;
   border: none;
@@ -230,7 +257,6 @@ async function deleteHousehold(household) {
   border-radius: 10px;
 }
 
-/* Action buttons look */
 :deep(.households-table .p-button.p-button-success.p-button-outlined) {
   background: #e8fbf1;
   border-color: transparent;
@@ -245,13 +271,11 @@ async function deleteHousehold(household) {
   box-shadow: 0 2px 8px rgba(239,68,68,.18);
 }
 
-/* Green numeric tone for Miembros column (now 5th due to # column) */
 :deep(.households-table .p-datatable-tbody > tr > td:nth-child(5)) {
   color: #ff8c3a;
   font-weight: 700;
 }
 
-/* Title spacing to match reference */
 .card > .flex h2 {
   margin: 0;
   font-size: 1.4rem;
@@ -262,8 +286,9 @@ async function deleteHousehold(household) {
   border-radius: 10px;
 }
 
-/* Small avatar/icon spaces to mimic reference badges (optional placeholder) */
 :deep(.households-table .id-cell) {
-  display:flex; align-items:center; gap:10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 </style>

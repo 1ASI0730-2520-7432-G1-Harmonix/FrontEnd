@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 const user = ref(null);
 const plan = ref('FREE');
 const totalMembers = ref(0);
@@ -13,33 +15,55 @@ const totalHouseholds = ref(0);
 const membersLimit = ref(null);
 // removed insights state
 const loading = ref(true);
+const planLabel = computed(() =>
+  plan.value === 'FREE'
+    ? t('representativeDashboard.plan_free')
+    : t('representativeDashboard.plan_premium')
+);
 
 onMounted(async () => {
-  const userData = localStorage.getItem('user');
-  if (userData) {
-    user.value = JSON.parse(userData);
-    plan.value = user.value?.plan || 'FREE';
-    membersLimit.value = plan.value === 'FREE' ? 3 : null;
-    await loadDashboardData();
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      user.value = JSON.parse(userData);
+      plan.value = user.value?.plan || 'FREE';
+      membersLimit.value = plan.value === 'FREE' ? 3 : null;
+      await loadDashboardData();
+    }
+  } finally {
+    loading.value = false;
   }
-  loading.value = false;
 });
 
 async function loadDashboardData() {
+  if (!user.value) return;
+
+  // Helper to wrap a request with a timeout so UI never hangs
+  const withTimeout = (promise, ms = 6000) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+  };
+
   try {
-    const [members, bills, contributions, households] = await Promise.all([
-      httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`),
-      httpInstance.get(`/bills?householdId=${user.value.householdId}`),
-      httpInstance.get(`/contributions?householdId=${user.value.householdId}`),
-      httpInstance.get(`/households?representativeId=${user.value.id}`)
+    const results = await Promise.allSettled([
+      withTimeout(httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`)),
+      withTimeout(httpInstance.get(`/bills?householdId=${user.value.householdId}`)),
+      withTimeout(httpInstance.get(`/contributions?householdId=${user.value.householdId}`)),
+      withTimeout(httpInstance.get(`/households?representativeId=${user.value.id}`))
     ]);
 
-    totalMembers.value = members.data.length;
-    totalExpenses.value = (bills.data || []).reduce((sum, b) => sum + Number(b.amount || 0), 0);
-    totalContributions.value = (contributions.data || []).reduce((sum, c) => sum + Number(c.amount || 0), 0);
-    totalHouseholds.value = Array.isArray(households.data) ? households.data.length : 0;
+    const safe = (idx, fallback) => (results[idx].status === 'fulfilled' ? results[idx].value.data : fallback);
+    const members = safe(0, []);
+    const bills = safe(1, []);
+    const contributions = safe(2, []);
+    const households = safe(3, []);
 
-    // insights disabled
+    totalMembers.value = Array.isArray(members) ? members.length : 0;
+    totalExpenses.value = (bills || []).reduce((sum, b) => sum + Number(b?.amount || 0), 0);
+    totalContributions.value = (contributions || []).reduce((sum, c) => sum + Number(c?.amount || 0), 0);
+    totalHouseholds.value = Array.isArray(households) ? households.length : 0;
   } catch (error) {
     console.error('Error loading dashboard data:', error);
   }
@@ -55,8 +79,8 @@ function navigateTo(route) {
 <template>
   <div class="dashboard-home">
     <div v-if="loading" class="loader">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <p>Cargando información...</p>
+      <i class="pi pi-spin pi-spinner" style="font-size: 2 rem"></i>
+      <p>{{ t('representativeDashboard.loading') }}</p>
     </div>
 
     <template v-else>
@@ -64,13 +88,22 @@ function navigateTo(route) {
       <div class="welcome-card border-round mb-3">
         <div class="flex justify-content-between align-items-center flex-wrap gap-3">
           <div>
-            <h2 class="title m-0">Bienvenido, {{ user?.name }}</h2>
-            <p class="subtitle mt-2 mb-0">Administra tu hogar con claridad</p>
+            <h2 class="title m-0">
+              {{ t('representativeDashboard.welcome_title', { name: user?.name || '' }) }}
+            </h2>
+            <p class="subtitle mt-2 mb-0">{{ t('representativeDashboard.welcome_subtitle') }}</p>
           </div>
           <div class="flex align-items-center gap-2">
-            <span class="plan-badge" :class="plan.toLowerCase()">{{ plan === 'FREE' ? 'Plan Free' : 'Plan Premium' }}</span>
-            <div class="household-pill">Hogar Primario: <strong>{{ user?.householdId }}</strong></div>
-            <button class="notif-bell" title="Notificaciones" aria-label="Notificaciones" type="button">
+            <span class="plan-badge" :class="plan.toLowerCase()">{{ planLabel }}</span>
+            <div class="household-pill">
+              {{ t('representativeDashboard.primary_household') }} <strong>{{ user?.householdId }}</strong>
+            </div>
+            <button
+              class="notif-bell"
+              :title="t('representativeDashboard.notifications')"
+              :aria-label="t('representativeDashboard.notifications')"
+              type="button"
+            >
               <i class="pi pi-bell"></i>
               <span class="dot-indicator" />
             </button>
@@ -84,9 +117,9 @@ function navigateTo(route) {
           <div class="metric-card">
             <span class="metric-icon members"><i class="pi pi-users"></i></span>
             <div class="metric-content">
-              <span class="metric-label">Total Miembros</span>
+              <span class="metric-label">{{ t('representativeDashboard.metrics.members') }}</span>
               <div class="metric-value">{{ totalMembers }}</div>
-              <div class="metric-trend up">↑ 0% vs mes pasado</div>
+              <div class="metric-trend up">{{ t('representativeDashboard.metrics.trend_members') }}</div>
             </div>
             <i class="pi pi-arrow-up-right metric-go"></i>
           </div>
@@ -96,9 +129,9 @@ function navigateTo(route) {
           <div class="metric-card">
             <span class="metric-icon expenses"><i class="pi pi-wallet"></i></span>
             <div class="metric-content">
-              <span class="metric-label">Gastos Totales</span>
+              <span class="metric-label">{{ t('representativeDashboard.metrics.expenses') }}</span>
               <div class="metric-value">S/ {{ totalExpenses.toLocaleString() }}</div>
-              <div class="metric-trend neutral">—</div>
+              <div class="metric-trend neutral">{{ t('representativeDashboard.metrics.trend_neutral') }}</div>
             </div>
             <i class="pi pi-arrow-up-right metric-go"></i>
           </div>
@@ -108,9 +141,9 @@ function navigateTo(route) {
           <div class="metric-card">
             <span class="metric-icon contributions"><i class="pi pi-chart-bar"></i></span>
             <div class="metric-content">
-              <span class="metric-label">Aportes Totales</span>
+              <span class="metric-label">{{ t('representativeDashboard.metrics.contributions') }}</span>
               <div class="metric-value">S/ {{ totalContributions.toLocaleString() }}</div>
-              <div class="metric-trend up">↑ 0% acumulado</div>
+              <div class="metric-trend up">{{ t('representativeDashboard.metrics.trend_contributions') }}</div>
             </div>
             <i class="pi pi-arrow-up-right metric-go"></i>
           </div>
@@ -123,10 +156,10 @@ function navigateTo(route) {
           <div class="project-card pc-blue cursor-pointer" @click="navigateTo('/dashboard/representative/members')">
             <div class="pc-header">
               <span class="pc-icon"><i class="pi pi-users" /></span>
-              <span class="pc-menu">•••</span>
+              <span class="pc-menu">...</span>
             </div>
-            <div class="pc-title">Gestionar Miembros</div>
-            <div class="pc-sub">Administra los miembros del hogar</div>
+            <div class="pc-title">{{ t('representativeDashboard.quick_actions.members.title') }}</div>
+            <div class="pc-sub">{{ t('representativeDashboard.quick_actions.members.subtitle') }}</div>
           </div>
         </div>
 
@@ -134,10 +167,10 @@ function navigateTo(route) {
           <div class="project-card pc-orange cursor-pointer" @click="navigateTo('/dashboard/representative/expenses')">
             <div class="pc-header">
               <span class="pc-icon"><i class="pi pi-wallet" /></span>
-              <span class="pc-menu">•••</span>
+              <span class="pc-menu">...</span>
             </div>
-            <div class="pc-title">Gestionar Gastos</div>
-            <div class="pc-sub">Administra los gastos del hogar</div>
+            <div class="pc-title">{{ t('representativeDashboard.quick_actions.expenses.title') }}</div>
+            <div class="pc-sub">{{ t('representativeDashboard.quick_actions.expenses.subtitle') }}</div>
           </div>
         </div>
 
@@ -145,10 +178,10 @@ function navigateTo(route) {
           <div class="project-card pc-purple cursor-pointer" @click="navigateTo('/dashboard/representative/contribution')">
             <div class="pc-header">
               <span class="pc-icon"><i class="pi pi-chart-bar" /></span>
-              <span class="pc-menu">•••</span>
+              <span class="pc-menu">...</span>
             </div>
-            <div class="pc-title">Gestionar Aportes</div>
-            <div class="pc-sub">Administra los aportes del hogar</div>
+            <div class="pc-title">{{ t('representativeDashboard.quick_actions.contributions.title') }}</div>
+            <div class="pc-sub">{{ t('representativeDashboard.quick_actions.contributions.subtitle') }}</div>
           </div>
         </div>
 
@@ -156,10 +189,10 @@ function navigateTo(route) {
           <div class="project-card pc-teal cursor-pointer" @click="navigateTo('/dashboard/representative/settings')">
             <div class="pc-header">
               <span class="pc-icon"><i class="pi pi-cog" /></span>
-              <span class="pc-menu">•••</span>
+              <span class="pc-menu">...</span>
             </div>
-            <div class="pc-title">Configuración</div>
-            <div class="pc-sub">Ajusta las preferencias del hogar</div>
+            <div class="pc-title">{{ t('representativeDashboard.quick_actions.settings.title') }}</div>
+            <div class="pc-sub">{{ t('representativeDashboard.quick_actions.settings.subtitle') }}</div>
           </div>
         </div>
 
@@ -168,10 +201,10 @@ function navigateTo(route) {
           <div class="project-card pc-green cursor-pointer" @click="navigateTo('/dashboard/representative/households')">
             <div class="pc-header">
               <span class="pc-icon"><i class="pi pi-home" /></span>
-              <span class="pc-menu">•••</span>
+              <span class="pc-menu">...</span>
             </div>
-            <div class="pc-title">Gestionar Hogares</div>
-            <div class="pc-sub">Crea y administra tus hogares</div>
+            <div class="pc-title">{{ t('representativeDashboard.quick_actions.households.title') }}</div>
+            <div class="pc-sub">{{ t('representativeDashboard.quick_actions.households.subtitle') }}</div>
           </div>
         </div>
       </div>
@@ -229,14 +262,14 @@ function navigateTo(route) {
   cursor: pointer;
 }
 
-/* Metric cards themed to sidebar palette (blue → orange) */
+/* Metric cards themed to sidebar palette (blue to orange) */
 .metric-row {}
 .metric-card {
   display: flex;
   align-items: center;
   gap: 1rem;
   background: #ffffff;
-  border: 1px solid rgba(15,23,42,.06);
+  border: 1 px solid rgba(15,23,42,.06);
   border-radius: 16px;
   padding: 1rem 1rem;
   box-shadow: 0 8px 24px rgba(15,23,42,.06);
@@ -262,41 +295,41 @@ function navigateTo(route) {
 /* Welcome header inspired by reference */
 .welcome-card {
   background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border: 1 px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8 px 24 px rgba(15, 23, 42, 0.06);
   padding: 1.25rem 1.5rem;
 }
 .welcome-card .title { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 .welcome-card .subtitle { color: #6b7280; }
 .dashboard-toolbar { display: flex; align-items: center; gap: .5rem; }
 .dashboard-toolbar .spacer { flex: 1 1 auto; }
-.dashboard-toolbar .chip { border: 1px solid rgba(15,23,42,.08); background: #fff; padding: .45rem .8rem; border-radius: 999px; color: #0f172a; }
+.dashboard-toolbar .chip { border: 1 px solid rgba(15,23,42,.08); background: #fff; padding: .45rem .8rem; border-radius: 999px; color: #0f172a; }
 .dashboard-toolbar .chip.ghost { background: transparent; }
 .dashboard-toolbar .chip.primary { background: linear-gradient(135deg, #1e6dff 0%, #ff7a18 100%); color: #0b1220; border: none; }
 .plan-badge { padding: .35rem .7rem; border-radius: 999px; font-weight: 600; font-size: .85rem; }
 .plan-badge.free { background: #eef2ff; color: #1e40af; }
 .plan-badge.premium { background: #fff7ed; color: #c2410c; }
-.household-pill { padding: .45rem .7rem; border-radius: 999px; background: #f1f5f9; color: #0f172a; border: 1px solid rgba(15,23,42,.08); }
-.notif-bell { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:999px; background:#f1f5f9; border:1px solid rgba(15,23,42,.08); color:#0f172a; position:relative; transition: all .15s ease; }
+.household-pill { padding: .45rem .7rem; border-radius: 999px; background: #f1f5f9; color: #0f172a; border: 1 px solid rgba(15,23,42,.08); }
+.notif-bell { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:999px; background:#f1f5f9; border:1 px solid rgba(15,23,42,.08); color:#0f172a; position:relative; transition: all .15s ease; }
 .notif-bell:hover { background:#fff; box-shadow:0 6px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
 .notif-bell i { font-size: 1rem; }
 .notif-bell .dot-indicator { position:absolute; top:6px; right:8px; width:8px; height:8px; border-radius:999px; background:#22c55e; box-shadow:0 0 0 2px #fff; }
 
 /* KPI cards look */
 .kpi-row {}
-.kpi-card { background:#fff; border:1px solid rgba(15,23,42,.06); border-radius: 16px; padding: 1rem; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
-.kpi-header { display:flex; align-items:center; justify-content: space-between; color:#6b7280; margin-bottom:.5rem; }
-.kpi-title { font-weight:600; }
-.kpi-go { color:#cbd5e1; }
-.kpi-body { display:flex; align-items:center; gap:1rem; }
-.kpi-icon { width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:#eef2ff; color:#1e3a8a; }
-.kpi-icon i { font-size:1.1rem; }
-.kpi-value { font-size:1.6rem; font-weight:800; color:#0f172a; line-height:1; }
-.kpi-sub { color:#64748b; font-size:.85rem; }
-.kpi-sub.muted { color:#94a3b8; }
+kpi-card { background:#fff; border:1 px solid rgba(15,23,42,.06); border-radius: 16px; padding: 1rem; box-shadow: 0 8 px 24 px rgba(15,23,42,.06); }
+kpi-header { display:flex; align-items:center; justify-content: space-between; color:#6b7280; margin-bottom:.5rem; }
+kpi-title { font-weight:600; }
+kpi-go { color:#cbd5e1; }
+kpi-body { display:flex; align-items:center; gap:1rem; }
+kpi-icon { width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:#eef2ff; color:#1e3a8a; }
+kpi-icon i { font-size:1.1rem; }
+kpi-value { font-size:1.6rem; font-weight:800; color:#0f172a; line-height:1; }
+kpi-sub { color:#64748b; font-size:.85rem; }
+kpi-sub.muted { color:#94a3b8; }
 
 /* Quick actions */
-.quick-actions .action-card { background:#fff; border:1px solid rgba(15,23,42,.06); border-radius:14px; padding:1rem; box-shadow:0 6px 18px rgba(15,23,42,.06); transition: all .2s ease; }
+.quick-actions .action-card { background:#fff; border:1 px solid rgba(15,23,42,.06); border-radius:14px; padding:1rem; box-shadow:0 6px 18px rgba(15,23,42,.06); transition: all .2s ease; }
 .quick-actions .action-card:hover { transform: translateY(-2px); box-shadow:0 10px 22px rgba(15,23,42,.08); }
 .quick-actions .icon-wrap { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:12px; background:#eef2ff; color:#1e3a8a; margin-bottom:.5rem; }
 .quick-actions h4 { margin: .35rem 0; font-weight:700; color:#0f172a; }
@@ -310,7 +343,7 @@ function navigateTo(route) {
   border-radius: 20px;
   color: #fff;
   padding: 1rem;
-  box-shadow: 0 8px 24px rgba(15,23,42,.15);
+  box-shadow: 0 8 px 24 px rgba(15,23,42,.15);
   min-height: 150px;
 }
 .project-card .pc-header { display:flex; align-items:center; justify-content: space-between; }

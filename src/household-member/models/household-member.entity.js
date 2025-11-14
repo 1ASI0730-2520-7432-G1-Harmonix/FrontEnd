@@ -3,6 +3,7 @@
                     id = "",
                     userId = 0,
                     householdId = "",
+                    income = 0,
                     joinedAt = "",
                     createdAt = "",
                     updatedAt = "",
@@ -10,6 +11,7 @@
         this.id = id;
         this.userId = Number(userId) || 0;
         this.householdId = householdId;
+        this.income = typeof income === "string" ? Number(income) : Number(income || 0);
         this.joinedAt = joinedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;

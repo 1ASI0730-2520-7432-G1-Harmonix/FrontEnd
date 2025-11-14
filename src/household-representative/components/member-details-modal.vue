@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { Member } from '../models/member.model.js';
+import { useI18n } from 'vue-i18n';
 
-// Props
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -14,53 +14,68 @@ const props = defineProps({
   }
 });
 
-// Emits
 const emit = defineEmits(['update:visible']);
 
-// Computed
-const memberInstance = computed(() => {
-  return props.member ? new Member(props.member) : null;
-});
+const { t } = useI18n();
+
+const memberInstance = computed(() => (props.member ? new Member(props.member) : null));
 
 const dialogVisible = computed({
   get: () => props.visible,
-  set: (value) => emit('update:visible', value)
+  set: value => emit('update:visible', value)
 });
 
 const dialogTitle = computed(() => {
-  return memberInstance.value ? `Detalles de ${memberInstance.value.name}` : 'Detalles del miembro';
+  if (memberInstance.value) {
+    return t('representativeMembers.details.title', { name: memberInstance.value.name });
+  }
+  return t('representativeMembers.details.genericTitle');
+});
+
+const statusLabel = computed(() => {
+  if (!memberInstance.value) return '';
+  const key = `representativeMembers.status.${memberInstance.value.status}`;
+  const translated = t(key);
+  return translated === key ? memberInstance.value.getStatusLabel() : translated;
+});
+
+const roleLabel = computed(() => {
+  if (!memberInstance.value) return '';
+  const key = `representativeMembers.roles.${memberInstance.value.role}`;
+  const translated = t(key);
+  return translated === key ? memberInstance.value.getRoleLabel() : translated;
 });
 </script>
 
 <template>
-  <pv-dialog 
-    v-model:visible="dialogVisible" 
+  <pv-dialog
+    v-model:visible="dialogVisible"
     :header="dialogTitle"
-    :modal="true" 
+    :modal="true"
     :style="{ width: '50vw' }"
   >
     <div v-if="memberInstance" class="member-details">
       <div class="detail-row">
-        <label>Nombre:</label>
+        <label>{{ t('representativeMembers.details.fields.name') }}</label>
         <span>{{ memberInstance.name }}</span>
       </div>
       <div class="detail-row">
-        <label>Email:</label>
+        <label>{{ t('representativeMembers.details.fields.email') }}</label>
         <span>{{ memberInstance.email }}</span>
       </div>
       <div class="detail-row">
-        <label>Estado:</label>
-        <pv-tag 
-          :value="memberInstance.getStatusLabel()" 
+        <label>{{ t('representativeMembers.details.fields.status') }}</label>
+        <pv-tag
+          :value="statusLabel"
           :severity="memberInstance.getStatusSeverity()"
         />
       </div>
       <div class="detail-row">
-        <label>Rol:</label>
-        <span>{{ memberInstance.getRoleLabel() }}</span>
+        <label>{{ t('representativeMembers.details.fields.role') }}</label>
+        <span>{{ roleLabel }}</span>
       </div>
       <div class="detail-row">
-        <label>Total aportado:</label>
+        <label>{{ t('representativeMembers.details.fields.total') }}</label>
         <span class="amount-highlight">{{ memberInstance.getFormattedTotalContributed() }}</span>
       </div>
     </div>
@@ -93,7 +108,6 @@ const dialogTitle = computed(() => {
   font-size: 1.1rem;
 }
 
-/* PrimeVue overrides for dark theme */
 :deep(.p-dialog) {
   background-color: #1a1a1a;
   color: white;

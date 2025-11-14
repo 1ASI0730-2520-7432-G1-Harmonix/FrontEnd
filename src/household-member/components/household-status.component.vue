@@ -1,7 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { fetchHouseholdMembers, fetchHouseholdSummary } from '../services/household.service.js'
-
+import { ref, onMounted, computed } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -9,26 +7,33 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import SelectButton from 'primevue/selectbutton'
 
-const month = ref('Agosto 2025')
-const rows = ref([])
+import { HouseholdAPI } from '../infrastructure/household.api.js'
+
 const loading = ref(true)
 const error = ref('')
+const periodOptions = ref([])
+const selectedPeriod = ref(null)
+const datasets = ref({})
 
-const summary = ref({
+const defaultSummary = {
   totalContributed: 0,
   monthlyGoal: 0,
   progress: 0,
   contributors: 0,
   currency: 'PEN'
-})
+}
 
-const money = (n) =>
-    new Intl.NumberFormat(summary.value.currency === 'USD' ? 'en-US' : 'es-PE', {
-      style: 'currency',
-      currency: summary.value.currency
-    }).format(n || 0)
+const summary = computed(() => datasets.value?.[selectedPeriod.value]?.summary || defaultSummary)
+const rows = computed(() => datasets.value?.[selectedPeriod.value]?.rows || [])
 
-const statusSeverity = (s) => (s === 'Cumplido' ? 'success' : s === 'Vencido' ? 'danger' : 'warn')
+const money = (n = 0) =>
+  new Intl.NumberFormat(summary.value.currency === 'USD' ? 'en-US' : 'es-PE', {
+    style: 'currency',
+    currency: summary.value.currency || 'PEN'
+  }).format(n || 0)
+
+const statusSeverity = status =>
+  status === 'Cumplido' ? 'success' : status === 'Vencido' ? 'danger' : 'warn'
 
 onMounted(load)
 
@@ -37,15 +42,40 @@ async function load () {
   error.value = ''
   try {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    const householdId = user?.householdId || 'HOG-1759796571919'
+    const householdId = user?.householdId || ''
+    if (!householdId) throw new Error('No se encontró el hogar.')
 
-    const [members, kpis] = await Promise.all([
-      fetchHouseholdMembers(householdId),
-      fetchHouseholdSummary(householdId)
+    const [
+      memberList,
+      bills,
+      contributions,
+      memberContribs,
+      users,
+      householdRaw
+    ] = await Promise.all([
+      HouseholdAPI.membersByHousehold(householdId),
+      HouseholdAPI.billsByHousehold(householdId),
+      HouseholdAPI.contributionsByHousehold(householdId),
+      HouseholdAPI.memberContributions(),
+      HouseholdAPI.users(),
+      HouseholdAPI.householdById(householdId)
     ])
 
-    rows.value = members
-    summary.value = kpis
+    const currency = householdRaw?.[0]?.currency === 2 ? 'USD' : 'PEN'
+    const memberIds = new Set(memberList.map(m => String(m.id)))
+    const filteredEntries = memberContribs.filter(entry => memberIds.has(String(entry.memberId)))
+    const { dataset, options } = buildPeriodDataset({
+      members: memberList,
+      contributions,
+      contributionEntries: filteredEntries,
+      bills,
+      users,
+      currency
+    })
+
+    datasets.value = dataset
+    periodOptions.value = options
+    selectedPeriod.value = options[0]?.value || null
   } catch (e) {
     console.error(e)
     error.value = 'No se pudo cargar el estado del hogar.'
@@ -67,8 +97,132 @@ function exportCSV () {
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = 'estado_hogar.csv'; a.click()
+  a.href = url
+  a.download = 'estado_hogar.csv'
+  a.click()
   URL.revokeObjectURL(url)
+}
+
+function buildPeriodDataset ({ members, contributions, contributionEntries, bills, users, currency }) {
+  const usersMap = new Map(users.map(u => [String(u.id), u]))
+  const billMap = new Map(bills.map(b => [String(b.id), b]))
+  const membersWithNames = members.map(member => ({
+    ...member,
+    name: usersMap.get(String(member.userId))?.name || 'Miembro'
+  }))
+  const contributionIds = new Set(contributions.map(c => String(c.id)))
+  const memberIds = new Set(membersWithNames.map(m => String(m.id)))
+  const validEntries = contributionEntries.filter(entry =>
+    contributionIds.has(String(entry.contributionId)) && memberIds.has(String(entry.memberId))
+  )
+  const periods = new Map()
+  const formatter = new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' })
+
+  const getPeriodKey = date => {
+    if (!date) return 'general'
+    const parsed = new Date(date)
+    if (Number.isNaN(parsed.getTime())) return 'general'
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`
+  }
+  const getLabel = key => {
+    if (key === 'general') return 'General'
+    const [year, month] = key.split('-')
+    return formatter
+      .format(new Date(Number(year), Number(month) - 1, 1))
+      .replace(/^\w/, c => c.toUpperCase())
+  }
+  const ensurePeriod = key => {
+    if (!periods.has(key)) {
+      periods.set(key, {
+        label: getLabel(key),
+        billIds: new Set(),
+        contributionIds: new Set()
+      })
+    }
+    return periods.get(key)
+  }
+
+  bills.forEach(bill => {
+    const key = getPeriodKey(bill.paymentDay || bill.createdAt)
+    ensurePeriod(key).billIds.add(String(bill.id))
+  })
+
+  contributions.forEach(contribution => {
+    const bill = billMap.get(String(contribution.billId))
+    const key = getPeriodKey(bill?.paymentDay || contribution.deadlineForMembers || contribution.createdAt)
+    const bucket = ensurePeriod(key)
+    bucket.contributionIds.add(String(contribution.id))
+    if (bill) bucket.billIds.add(String(bill.id))
+  })
+
+  if (!periods.size) ensurePeriod('general')
+
+  const dataset = {}
+  const options = [...periods.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([key, bucket]) => {
+      const periodBills = [...bucket.billIds].map(id => billMap.get(id)).filter(Boolean)
+      const periodContributions = contributions.filter(c => bucket.contributionIds.has(String(c.id)))
+      const periodEntries = validEntries.filter(entry => bucket.contributionIds.has(String(entry.contributionId)))
+      dataset[key] = buildRowsForPeriod({
+        members: membersWithNames,
+        bills: periodBills,
+        contributions: periodContributions,
+        entries: periodEntries,
+        currency,
+        billMap
+      })
+      return { label: bucket.label, value: key }
+    })
+
+  return { dataset, options }
+}
+
+function buildRowsForPeriod ({ members, bills, contributions, entries, currency, billMap }) {
+  const memberCount = members.length || 1
+  const monthlyGoal = bills.reduce((sum, bill) => sum + Number(bill?.amount || 0), 0)
+  const baseShare = memberCount ? monthlyGoal / memberCount : 0
+  const contributionIds = new Set(contributions.map(c => String(c.id)))
+  const deadlineDates = contributions
+    .map(c => c.deadlineForMembers || billMap.get(String(c.billId))?.paymentDay)
+    .filter(Boolean)
+    .map(value => new Date(value))
+    .filter(date => !Number.isNaN(date.getTime()))
+  const maxDeadline = deadlineDates.length ? new Date(Math.max(...deadlineDates.map(d => d.getTime()))) : null
+
+  const rows = members.map(member => {
+    const myEntries = entries.filter(entry => String(entry.memberId) === String(member.id) && contributionIds.has(String(entry.contributionId)))
+    const assignedFromEntries = myEntries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+    const contributed = myEntries
+      .filter(entry => Number(entry.status) === 1)
+      .reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+    const assigned = myEntries.length ? assignedFromEntries : Number(baseShare.toFixed(2))
+    const status = assigned > 0 && contributed >= assigned ? 'Cumplido' : 'Pendiente'
+
+    return {
+      id: member.id,
+      name: member.name,
+      contributed: Number(contributed.toFixed(2)),
+      assigned: Number(assigned.toFixed(2)),
+      deadline: maxDeadline ? formatDate(maxDeadline) : '—',
+      status
+    }
+  })
+
+  const totalContributed = rows.reduce((sum, row) => sum + row.contributed, 0)
+  const progress = monthlyGoal > 0 ? Number(((totalContributed / monthlyGoal) * 100).toFixed(2)) : 0
+  const contributors = rows.filter(row => row.contributed > 0).length
+
+  return {
+    summary: { totalContributed, monthlyGoal, progress, contributors, currency },
+    rows
+  }
+}
+
+function formatDate (value) {
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (!date || Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 </script>
 
@@ -79,8 +233,10 @@ function exportCSV () {
       <div class="header">
         <h2 class="title">Estado del hogar</h2>
         <SelectButton
-            v-model="month"
-            :options="['Agosto 2025','Septiembre 2025','Octubre 2025']"
+            v-model="selectedPeriod"
+            :options="periodOptions"
+            optionLabel="label"
+            optionValue="value"
             aria-label="Periodo"
             class="month"
         />

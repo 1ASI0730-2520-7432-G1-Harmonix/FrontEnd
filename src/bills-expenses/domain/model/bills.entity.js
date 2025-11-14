@@ -1,4 +1,4 @@
-﻿export class Bill {
+export class Bill {
     constructor({
                     id = "",
                     householdId = "",
@@ -21,6 +21,11 @@
 
     validate() {
         const errors = {};
+
+        if (this.id && !/^BG-\d+$/.test(String(this.id))) {
+            errors.id = 'id must start with BG- followed by numbers';
+        }
+
         if (!this.householdId || typeof this.householdId !== "string") {
             errors.householdId = "householdId is required";
         }
@@ -41,3 +46,4 @@
         return Object.keys(errors).length === 0 ? null : errors;
     }
 }
+

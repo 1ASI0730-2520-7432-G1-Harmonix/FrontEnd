@@ -33,11 +33,22 @@ const success = ref('')
 const error = ref('')
 
 const displayLocale = computed(() => (locale.value || form.value.language || '').toUpperCase())
+const displaySettingsId = computed(() => {
+  const normalize = value =>
+    String(value ?? '')
+      .trim()
+      .replace(/\D+/g, '')
+
+  const digits = normalize(form.value.id)
+  if (digits) return digits
+
+  const fallback = normalize(form.value.userId)
+  return fallback || '—'
+})
 
 function applyDarkMode(flag) {
   document.documentElement.classList.toggle('dark', !!flag)
 }
-
 function formatDate(iso) {
   try {
     return new Date(iso).toLocaleString()
@@ -48,14 +59,15 @@ function formatDate(iso) {
 
 const isDirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(lastSaved.value))
 
+
 onMounted(async () => {
   try {
     const userData = localStorage.getItem('user')
-    if (!userData) throw new Error('There is no user data!')
+    if (!userData) throw new Error(t('settings.errors.noUserData'))
 
     const parsed = JSON.parse(userData)
     const userId = Number(parsed?.id ?? 0)
-    if (!userId) throw new Error('User id is invalid')
+    if (!userId) throw new Error(t('settings.errors.invalidUserId'))
 
     // Load settings by user id
     const loaded = await SettingsService.getSettingsByUserId(userId).catch(() => null)
@@ -71,7 +83,7 @@ onMounted(async () => {
     applyDarkMode(settings.darkMode)
   } catch (e) {
     console.error(e)
-    error.value = e?.message || 'Failed to load settings.'
+    error.value = e?.message || t('settings.messages.loadError')
   }
 })
 
@@ -109,10 +121,10 @@ async function save() {
     // Reflect dark mode visually
     applyDarkMode(form.value.darkMode)
 
-    success.value = 'Settings saved successfully.'
+    success.value = t('settings.messages.saveSuccess')
   } catch (e) {
     console.error(e)
-    error.value = e?.message || 'Could not save settings. Please try again.'
+    error.value = e?.message || t('settings.messages.saveError')
   } finally {
     saving.value = false
   }
@@ -137,24 +149,12 @@ function reset() {
           <p class="subtitle mt-2 mb-0">{{ $t('settings.subtitle') }}</p>
         </div>
         <div class="flex align-items-center gap-2">
-          <Tag value="User" icon="pi pi-user" />
-          <Tag severity="info" :value="`ID: ${form.userId || '—'}`" />
-          <Tag severity="secondary" :value="form.id || '—'" />
+          <Tag :value="$t('settings.tag.user')" icon="pi pi-user" />
+          <Tag severity="info" :value="$t('settings.tag.userId', { id: form.userId || '—' })" />
+          <Tag severity="secondary" :value="$t('settings.tag.settingsId', { id: displaySettingsId })" />
         </div>
       </div>
     </div>
-
-    <!--    <div class="mb-4 flex align-items-center justify-content-between">-->
-    <!--      <div>-->
-    <!--        <h2 class="m-0">{{ $t('settings.title') }}</h2>-->
-    <!--        <p class="mt-1 text-600">{{ $t('settings.subtitle') }}</p>-->
-    <!--      </div>-->
-    <!--      <div class="flex gap-2">-->
-    <!--        <Tag value="User" icon="pi pi-user" />-->
-    <!--        <Tag severity="info" :value="`ID: ${form.userId || '—'}`" />-->
-    <!--        <Tag severity="secondary" :value="form.id || '—'" />-->
-    <!--      </div>-->
-    <!--    </div>-->
 
     <div class="grid">
       <!-- Preferences Section -->
@@ -174,7 +174,7 @@ function reset() {
                 <label class="mb-2 block">{{ $t('settings.dark_mode') }}</label>
                 <div class="flex align-items-center gap-3">
                   <InputSwitch v-model="form.darkMode" inputId="dark-mode" />
-                  <label for="dark-mode" class="m-0">{{ form.darkMode ? 'On' : 'Off' }}</label>
+                  <label for="dark-mode" class="m-0">{{ form.darkMode ? $t('settings.toggle.on') : $t('settings.toggle.off') }}</label>
                 </div>
               </div>
 
@@ -182,7 +182,7 @@ function reset() {
                 <label class="mb-2 block">{{ $t('settings.email_notifications') }}</label>
                 <div class="flex align-items-center gap-3">
                   <InputSwitch v-model="form.notificationEnabled" inputId="notif" />
-                  <label for="notif" class="m-0">{{ form.notificationEnabled ? 'Enabled' : 'Disabled' }}</label>
+                  <label for="notif" class="m-0">{{ form.notificationEnabled ? $t('settings.toggle.enabled') : $t('settings.toggle.disabled') }}</label>
                 </div>
               </div>
             </div>
@@ -197,7 +197,7 @@ function reset() {
 
               <div class="flex gap-2">
                 <Button
-                    label="Reset"
+                    :label="$t('settings.buttons.reset')"
                     severity="secondary"
                     outlined
                     :disabled="!isDirty"
@@ -205,7 +205,7 @@ function reset() {
                     :pt="{ root: { class: 'my-custom-button' } }"
                 />
                 <Button
-                    label="Save changes"
+                    :label="$t('settings.buttons.save')"
                     :loading="saving"
                     :disabled="!isDirty"
                     @click="save"
@@ -233,11 +233,11 @@ function reset() {
               </li>
               <li class="flex align-items-center justify-content-between py-2 border-bottom-1 surface-border custom-divider">
                 <span class="text-600">{{ $t('settings.dark_mode') }}</span>
-                <b>{{ form.darkMode ? 'On' : 'Off' }}</b>
+                <b>{{ form.darkMode ? $t('settings.toggle.on') : $t('settings.toggle.off') }}</b>
               </li>
               <li class="flex align-items-center justify-content-between py-2">
                 <span class="text-600">{{ $t('settings.notifications') }}</span>
-                <b>{{ form.notificationEnabled ? 'Enabled' : 'Disabled' }}</b>
+                <b>{{ form.notificationEnabled ? $t('settings.toggle.enabled') : $t('settings.toggle.disabled') }}</b>
               </li>
             </ul>
           </template>
@@ -256,11 +256,28 @@ function reset() {
 }
 .welcome-card .title { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 .welcome-card .subtitle { color: #6b7280; }
+/* Keep cards consistent with the rest of the app theme */
 .my-custom-card {
-  background-color: #2c3e50;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid rgba(15,23,42,.06);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15,23,42,.06);
 }
-.my-custom-button {
-  background-color: black;
+.my-custom-button { /* rely on outlined style; don't force dark bg */
+  background-color: transparent;
+}
+.danger-card {
+  border-color: rgba(248, 113, 113, 0.4) !important;
+  background: #fff5f5 !important;
+}
+.danger-card :deep(.p-card-title) {
+  color: #b91c1c;
+  font-weight: 700;
+}
+.small-note {
+  font-size: 0.85rem;
+  color: #6b7280;
 }
 
 /* PrimeVue Divider internals (scoped) */
