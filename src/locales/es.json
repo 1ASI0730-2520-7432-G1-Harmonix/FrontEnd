@@ -263,7 +263,7 @@
         "description": "Descripción"
       },
       "placeholders": {
-        "email": "Ingrese su correo",
+        "email": "Ingrese un correo valido",
         "household": "Selecciona un hogar",
         "description": "Describe el propósito de la invitación..."
       },
