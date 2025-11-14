@@ -45,6 +45,16 @@ const blankForm = {
 };
 const form = ref({ ...blankForm });
 const isEdit = computed(() => dialogMode.value === "edit");
+const dialogTitle = computed(() =>
+  isEdit.value
+    ? t("representativeExpenses.dialog.editTitle")
+    : t("representativeExpenses.dialog.createTitle")
+);
+const primaryButtonLabel = computed(() =>
+  isEdit.value
+    ? t("representativeExpenses.dialog.buttons.save")
+    : t("representativeExpenses.dialog.buttons.create")
+);
 
 function formatDate(iso) {
   try {
@@ -65,7 +75,7 @@ async function load() {
   const HouseHoldId = parsedUser?.householdId;
   currentUserId.value = Number(parsedUser?.id || 0);
   if (!HouseHoldId) {
-    error.value = "No householdId provided.";
+    error.value = t("representativeExpenses.messages.noHousehold");
     return;
   }
 
@@ -79,7 +89,7 @@ async function load() {
     bills.value = list;
   } catch (e) {
     console.error(e);
-    error.value = e?.message || "Failed to load bills.";
+    error.value = e?.message || t("representativeExpenses.messages.loadError");
   } finally {
     loading.value = false;
   }
@@ -125,35 +135,35 @@ async function save() {
     if (isEdit.value && form.value.id) {
       const updated = await BillService.updateBill(form.value.id, payload);
       bills.value = bills.value.map(b => (b.id === updated.id ? updated : b));
-      success.value = "Bill updated.";
+      success.value = t("representativeExpenses.messages.updated");
     } else {
       const created = await BillService.createBill(payload);
       bills.value = [created, ...bills.value];
-      success.value = "Bill created.";
+      success.value = t("representativeExpenses.messages.created");
     }
     showDialog.value = false;
   } catch (e) {
     console.error(e);
-    error.value = typeof e?.message === "string" ? e.message : "Could not save bill. Check fields and try again.";
+    error.value = typeof e?.message === "string" ? e.message : t("representativeExpenses.messages.saveError");
   }
 }
 
 function confirmDelete(row) {
   confirm.require({
-    message: `Delete bill ${row.id}?`,
-    header: "Confirm",
+    message: t("representativeExpenses.confirm.message", { id: row.id }),
+    header: t("representativeExpenses.confirm.header"),
     icon: "pi pi-exclamation-triangle",
-    acceptLabel: "Delete",
-    rejectLabel: "Cancel",
+    acceptLabel: t("representativeExpenses.confirm.accept"),
+    rejectLabel: t("representativeExpenses.confirm.reject"),
     acceptClass: "p-button-danger",
     accept: async () => {
       try {
         await BillService.deleteBill(row.id);
         bills.value = bills.value.filter((b) => b.id !== row.id);
-        success.value = "Bill deleted.";
+        success.value = t("representativeExpenses.messages.deleted");
       } catch (e) {
         console.error(e);
-        error.value = e?.message || "Failed to delete bill.";
+        error.value = e?.message || t("representativeExpenses.messages.deleteError");
       }
     },
   });
@@ -169,11 +179,11 @@ onMounted( async () => {
     <Toolbar :pt="{root:{ class:'welcome-card border-round mb-3'}}">
       <template #start>
         <div class="flex align-items-center gap-2">
-          <h2 class="m-0" style="color: black !important;">Household Bills</h2>
+          <h2 class="m-0" style="color: black !important;">{{ t('representativeExpenses.title') }}</h2>
         </div>
       </template>
       <template #end>
-        <Button label="Add bill" icon="pi pi-plus" @click="openCreate" />
+        <Button :label="t('representativeExpenses.addButton')" icon="pi pi-plus" @click="openCreate" />
       </template>
     </Toolbar>
 
@@ -185,25 +195,26 @@ onMounted( async () => {
             :loading="loading"
             responsiveLayout="scroll"
             class="p-datatable-sm custom-table"
+            :emptyMessage="t('representativeExpenses.table.empty')"
         >
-          <Column field="id" header="ID" sortable />
-          <Column field="description" header="Description" sortable />
-          <Column header="Amount" sortable>
+          <Column field="id" :header="t('representativeExpenses.table.columns.id')" sortable />
+          <Column field="description" :header="t('representativeExpenses.table.columns.description')" sortable />
+          <Column :header="t('representativeExpenses.table.columns.amount')" sortable>
             <template #body="{ data }">
               <span>{{ formatMoney(data.amount) }}</span>
             </template>
           </Column>
-          <Column header="Payment Day" sortable>
+          <Column :header="t('representativeExpenses.table.columns.paymentDay')" sortable>
             <template #body="{ data }">
               <span>{{ formatDate(data.paymentDay) }}</span>
             </template>
           </Column>
-          <Column header="Created" sortable>
+          <Column :header="t('representativeExpenses.table.columns.created')" sortable>
             <template #body="{ data }">
               <span>{{ formatDate(data.createdAt) }}</span>
             </template>
           </Column>
-          <Column header="Updated" sortable>
+          <Column :header="t('representativeExpenses.table.columns.updated')" sortable>
             <template #body="{ data }">
               <span>{{ formatDate(data.updatedAt) }}</span>
             </template>
@@ -217,14 +228,17 @@ onMounted( async () => {
       </template>
     </Card>
 
-    <Dialog v-model:visible="showDialog" modal :header="isEdit ? 'Edit Bill' : 'Add Bill'" :style="{ width: '520px' }">
+    <Dialog v-model:visible="showDialog" modal :header="dialogTitle" :style="{ width: '520px' }">
       <div class="field mb-3">
-        <label class="block mb-2">Description</label>
-        <InputText v-model="form.description" placeholder="e.g., Electricity" />
+        <label class="block mb-2">{{ t('representativeExpenses.dialog.fields.description') }}</label>
+        <InputText
+          v-model="form.description"
+          :placeholder="t('representativeExpenses.dialog.placeholders.description')"
+        />
       </div>
 
       <div class="field mb-3">
-        <label class="block mb-2">Amount</label>
+        <label class="block mb-2">{{ t('representativeExpenses.dialog.fields.amount') }}</label>
         <InputNumber
             v-model="form.amount"
             mode="currency"
@@ -239,7 +253,7 @@ onMounted( async () => {
       
 
       <div class="field mb-3">
-        <label class="block mb-2">Payment Day</label>
+        <label class="block mb-2">{{ t('representativeExpenses.dialog.fields.paymentDay') }}</label>
         <Calendar
             v-model="form.paymentDay"
             showIcon
@@ -247,12 +261,18 @@ onMounted( async () => {
             :pt="{ input: { class: 'w-full' } }"
         />
         <small class="text-600">
-          Current: {{ form.paymentDay  ? new Date(form.paymentDay).toISOString() : '' }}</small>
+          {{ t('representativeExpenses.dialog.currentLabel') }}
+          {{ form.paymentDay ? new Date(form.paymentDay).toISOString() : '' }}</small>
       </div>
 
       <div class="flex justify-content-end gap-2 mt-4">
-        <Button label="Cancel" severity="secondary" outlined @click="showDialog = false" />
-        <Button :label="isEdit ? 'Save' : 'Create'" @click="save" />
+        <Button
+          :label="t('representativeExpenses.dialog.buttons.cancel')"
+          severity="secondary"
+          outlined
+          @click="showDialog = false"
+        />
+        <Button :label="primaryButtonLabel" @click="save" />
       </div>
     </Dialog>
 

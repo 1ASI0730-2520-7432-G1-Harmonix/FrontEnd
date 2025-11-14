@@ -205,6 +205,43 @@
       "isNewUser": false,
       "createdAt": "",
       "updatedAt": "2025-11-13T06:35:28.652Z"
+    },
+    {
+      "id": 1763098355929,
+      "name": "Waaaa",
+      "email": "holi@gmail.com",
+      "password": "123456789",
+      "role": "representative",
+      "status": "active",
+      "plan": "FREE",
+      "householdId": "HOG-1763098355929",
+      "isNewUser": false
+    },
+    {
+      "id": 1763098475446,
+      "name": "RTYYy",
+      "email": "holaaa@gmail.com",
+      "password": "123456789",
+      "role": "representative",
+      "status": "active",
+      "plan": "FREE",
+      "householdId": "HOG-1763098475446",
+      "isNewUser": false
+    },
+    {
+      "id": 1763098795442,
+      "name": "Patrick Espinoza",
+      "email": "ho@gmail.com",
+      "password": "123456789",
+      "role": "representative",
+      "status": "active",
+      "plan": "FREE",
+      "householdId": "HOG-1763098795442",
+      "photo": "",
+      "profileLockedUntil": "2025-12-14T05:41:30.688Z",
+      "isNewUser": false,
+      "createdAt": "",
+      "updatedAt": "2025-11-14T05:41:30.688Z"
     }
   ],
   "settings": [
@@ -225,6 +262,42 @@
       "notificationEnabled": true,
       "createdAt": "2025-11-13T04:47:16.900Z",
       "updatedAt": "2025-11-13T04:47:30.955Z"
+    },
+    {
+      "id": "l18c4Pl",
+      "userId": 1763014870642,
+      "language": "es",
+      "darkMode": false,
+      "notificationEnabled": true,
+      "createdAt": "2025-11-14T03:43:57.297Z",
+      "updatedAt": "2025-11-14T05:32:11.039Z"
+    },
+    {
+      "id": "kWg-YwJ",
+      "userId": 1763098355929,
+      "language": "es",
+      "darkMode": true,
+      "notificationEnabled": true,
+      "createdAt": "2025-11-14T05:32:48.437Z",
+      "updatedAt": "2025-11-14T05:32:52.594Z"
+    },
+    {
+      "id": "HMah4SM",
+      "userId": 1763098475446,
+      "language": "es",
+      "darkMode": true,
+      "notificationEnabled": true,
+      "createdAt": "2025-11-14T05:34:53.256Z",
+      "updatedAt": "2025-11-14T05:34:57.037Z"
+    },
+    {
+      "id": 1763098807709,
+      "userId": 1763098795442,
+      "language": "es",
+      "darkMode": true,
+      "notificationEnabled": true,
+      "createdAt": "2025-11-14T05:40:04.810Z",
+      "updatedAt": "2025-11-14T05:40:07.709Z"
     }
   ],
   "households": [
@@ -331,6 +404,36 @@
       "currency": "USD",
       "representativeId": 1763014870642,
       "createdAt": "2025-11-13T06:21:10.642Z"
+    },
+    {
+      "id": "HOG-1763098355929",
+      "name": "",
+      "description": "",
+      "memberCount": 1,
+      "startDate": "2025-11-14T05:32:35.929Z",
+      "currency": "USD",
+      "representativeId": 1763098355929,
+      "createdAt": "2025-11-14T05:32:35.929Z"
+    },
+    {
+      "id": "HOG-1763098475446",
+      "name": "",
+      "description": "",
+      "memberCount": 1,
+      "startDate": "2025-11-14T05:34:35.446Z",
+      "currency": "USD",
+      "representativeId": 1763098475446,
+      "createdAt": "2025-11-14T05:34:35.446Z"
+    },
+    {
+      "id": "HOG-1763098795442",
+      "name": "",
+      "description": "",
+      "memberCount": 1,
+      "startDate": "2025-11-14T05:39:55.442Z",
+      "currency": "USD",
+      "representativeId": 1763098795442,
+      "createdAt": "2025-11-14T05:39:55.442Z"
     }
   ],
   "householdMember": [

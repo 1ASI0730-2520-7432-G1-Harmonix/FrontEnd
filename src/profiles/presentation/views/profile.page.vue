@@ -2,8 +2,10 @@
 import { reactive, ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { profileStore } from '@/profiles/application/profile.store.js';
+import { useI18n } from 'vue-i18n';
 
 const toast = useToast();
+const { t } = useI18n();
 const saving = ref(false);
 const loadError = ref('');
 const userId = ref(null);
@@ -31,10 +33,10 @@ const fieldErrors = reactive({
 const loading = computed(() => profileStore.loading && !profileStore.current);
 const profile = computed(() => profileStore.current);
 
-const planOptions = [
-  { label: 'Free', value: 'FREE' },
-  { label: 'Premium', value: 'PREMIUM' }
-];
+const planOptions = computed(() => ([
+  { label: t('profile.plan.free'), value: 'FREE' },
+  { label: t('profile.plan.premium'), value: 'PREMIUM' }
+]));
 
 const activeTab = ref('personal');
 const verificationStep = ref(1);
@@ -79,6 +81,22 @@ const isDirty = computed(() => {
 
 const disableNext = computed(() => !isDirty.value || saving.value || isLocked.value);
 
+const displayName = computed(() =>
+  profile.value?.name || form.firstName || t('profile.fallback.name')
+);
+const displayEmail = computed(() =>
+  form.email || t('profile.fallback.email')
+);
+function getPlanLabel(code) {
+  const planCode = String(code || 'FREE').toLowerCase();
+  return t(`profile.plan.${planCode}`);
+}
+
+const displayPlanLabel = computed(() => {
+  const planName = getPlanLabel(form.plan || profile.value?.plan);
+  return t('profile.fallback.planLabel', { plan: planName });
+});
+
 const lastUpdatedLabel = computed(() => {
   const updated = profile.value?.updatedAt;
   if (!updated) return '—';
@@ -94,9 +112,11 @@ const lockedUntilLabel = computed(() => lockedUntil.value ? lockedUntil.value.to
 const lockCountdownLabel = computed(() => {
   if (!lockedUntil.value) return '';
   const diff = lockedUntil.value.getTime() - Date.now();
-  if (diff <= 0) return 'Disponible nuevamente';
+  if (diff <= 0) return t('profile.lock.available');
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-  return days === 1 ? '1 dia restante' : `${days} dias restantes`;
+  return days === 1
+    ? t('profile.lock.oneDay')
+    : t('profile.lock.days', { count: days });
 });
 
 function splitName(fullName = '') {
@@ -126,31 +146,31 @@ function setSnapshot(fromProfile) {
 }
 
 function validateForm() {
-  fieldErrors.firstName = form.firstName.trim() ? '' : 'Campo requerido';
-  fieldErrors.lastName = form.lastName.trim() ? '' : 'Campo requerido';
+  fieldErrors.firstName = form.firstName.trim() ? '' : t('profile.errors.required');
+  fieldErrors.lastName = form.lastName.trim() ? '' : t('profile.errors.required');
   const emailValue = form.email.trim();
   fieldErrors.email = emailValue && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)
     ? ''
-    : 'Correo invalido';
+    : t('profile.errors.invalidEmail');
   const newPassword = form.password.trim();
-  fieldErrors.password = newPassword && newPassword.length < 6 ? 'La contrasena debe tener al menos 6 caracteres' : '';
-  fieldErrors.plan = form.plan ? '' : 'Selecciona un plan';
-  fieldErrors.photo = form.photo && !/^https?:\/\//i.test(form.photo) ? 'Coloca un URL valido' : '';
+  fieldErrors.password = newPassword && newPassword.length < 6 ? t('profile.errors.passwordLength') : '';
+  fieldErrors.plan = form.plan ? '' : t('profile.errors.planRequired');
+  fieldErrors.photo = form.photo && !/^https?:\/\//i.test(form.photo) ? t('profile.errors.invalidUrl') : '';
   return !Object.values(fieldErrors).some(Boolean);
 }
 
 async function bootstrap() {
   try {
     const stored = localStorage.getItem('user');
-    if (!stored) throw new Error('No se encontro un usuario en sesion.');
+    if (!stored) throw new Error(t('profile.errors.sessionNotFound'));
     const parsed = JSON.parse(stored);
-    if (!parsed?.id) throw new Error('El usuario no tiene un identificador valido.');
+    if (!parsed?.id) throw new Error(t('profile.errors.invalidUserId'));
     userId.value = parsed.id;
     const loaded = await profileStore.loadProfile(parsed.id);
     setSnapshot(loaded);
   } catch (err) {
     console.error('Error loading profile', err);
-    loadError.value = err?.message || 'No se pudo cargar tu perfil.';
+    loadError.value = err?.message || t('profile.messages.loadError');
   }
 }
 
@@ -195,15 +215,15 @@ async function persistProfile(changes = {}, { lockProfile = false } = {}) {
 
     toast.add({
       severity: 'success',
-      summary: lockProfile ? 'Perfil finalizado' : 'Perfil actualizado',
+      summary: lockProfile ? t('profile.toast.finalized.title') : t('profile.toast.updated.title'),
       detail: lockProfile
-        ? 'Tu informacion fue verificada y quedara bloqueada por 30 dias.'
-        : 'Tus cambios fueron guardados correctamente.',
+        ? t('profile.toast.finalized.detail')
+        : t('profile.toast.updated.detail'),
       life: 3000
     });
   } catch (err) {
     console.error('Error updating profile', err);
-    loadError.value = err?.message || 'No se pudo guardar el perfil.';
+    loadError.value = err?.message || t('profile.messages.saveError');
   } finally {
     saving.value = false;
   }
@@ -237,11 +257,11 @@ function handleBack() {
 
 async function handleVerification() {
   if (!pendingChanges.value) {
-    verifyError.value = 'No hay cambios pendientes.';
+    verifyError.value = t('profile.errors.noPendingChanges');
     return;
   }
   if (verifyPassword.value.trim() !== (profile.value?.password || '')) {
-    verifyError.value = 'Contrasena actual incorrecta.';
+    verifyError.value = t('profile.errors.invalidPassword');
     return;
   }
   verifyError.value = '';
@@ -258,7 +278,7 @@ function openPhotoDialog() {
 
 function applyPhoto() {
   if (photoInput.value && !/^https?:\/\//i.test(photoInput.value)) {
-    fieldErrors.photo = 'Coloca un URL valido';
+    fieldErrors.photo = t('profile.errors.invalidUrl');
     return;
   }
   fieldErrors.photo = '';
@@ -275,7 +295,7 @@ onMounted(bootstrap);
 
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner"></i>
-      <span>Cargando perfil...</span>
+      <span>{{ $t('profile.loading') }}</span>
     </div>
 
     <div v-else class="page-layout">
@@ -291,18 +311,18 @@ onMounted(bootstrap);
               <i class="pi pi-camera"></i>
             </button>
           </div>
-          <h3>{{ profile?.name || form.firstName || 'Representante' }}</h3>
-          <p>{{ form.email || 'representative' }}</p>
-          <span class="tag">Plan {{ form.plan || 'FREE' }}</span>
+          <h3>{{ displayName }}</h3>
+          <p>{{ displayEmail }}</p>
+          <span class="tag">{{ displayPlanLabel }}</span>
         </div>
 
         <div class="help-card">
           <div class="icon">
             <i class="pi pi-comments"></i>
           </div>
-          <h4>Need help?</h4>
-          <p>Nuestro equipo puede asistirte para completar la verificacion.</p>
-          <pv-button label="Chatea con nosotros" class="w-full" outlined />
+          <h4>{{ $t('profile.help.title') }}</h4>
+          <p>{{ $t('profile.help.description') }}</p>
+          <pv-button :label="$t('profile.help.button')" class="w-full" outlined />
         </div>
       </div>
 
@@ -310,25 +330,25 @@ onMounted(bootstrap);
         <div class="verification-card">
           <div class="verification-header">
             <div>
-              <h4>Tu cuenta esta siendo verificada</h4>
-              <p>Tan pronto se valide tu informacion, podras acceder a todas las funciones.</p>
+              <h4>{{ $t('profile.verification.title') }}</h4>
+              <p>{{ $t('profile.verification.subtitle') }}</p>
             </div>
-            <span class="eta">ETA: 2-3 dias</span>
+            <span class="eta">{{ $t('profile.verification.eta') }}</span>
           </div>
           <div class="progress">
             <div :class="['step', { completed: verificationStep > 1, active: verificationStep === 1 }]">
               <span>1</span>
-              <p>Datos</p>
+              <p>{{ $t('profile.verification.steps.data') }}</p>
             </div>
             <div :class="['connector', { completed: verificationStep > 1 }]"></div>
             <div :class="['step', { completed: verificationStep > 2, active: verificationStep === 2 }]">
               <span>2</span>
-              <p>Verificacion</p>
+              <p>{{ $t('profile.verification.steps.review') }}</p>
             </div>
             <div :class="['connector', { completed: verificationStep > 2 }]"></div>
             <div :class="['step', { active: verificationStep === 3, completed: verificationStep === 3 }]">
               <span>3</span>
-              <p>Finalizado</p>
+              <p>{{ $t('profile.verification.steps.done') }}</p>
             </div>
           </div>
         </div>
@@ -341,7 +361,7 @@ onMounted(bootstrap);
               @click="activeTab = 'personal'"
               :disabled="verificationStep !== 1 || isLocked"
             >
-              Detalles personales
+              {{ $t('profile.tabs.personal') }}
             </button>
             <button
               class="tab"
@@ -349,13 +369,13 @@ onMounted(bootstrap);
               @click="activeTab = 'config'"
               :disabled="verificationStep !== 1 || isLocked"
             >
-              Configuracion
+              {{ $t('profile.tabs.config') }}
             </button>
           </div>
 
           <div v-if="verificationStep === 1 && activeTab === 'personal'" class="form-grid">
             <div class="field">
-              <label>Nombre</label>
+              <label>{{ $t('profile.fields.firstName') }}</label>
               <pv-inputtext
                 v-model="form.firstName"
                 placeholder=""
@@ -366,7 +386,7 @@ onMounted(bootstrap);
             </div>
 
             <div class="field">
-              <label>Apellido</label>
+              <label>{{ $t('profile.fields.lastName') }}</label>
               <pv-inputtext
                 v-model="form.lastName"
                 placeholder=""
@@ -377,11 +397,11 @@ onMounted(bootstrap);
             </div>
 
             <div class="field full">
-              <label>Correo electronico</label>
+              <label>{{ $t('profile.fields.email') }}</label>
               <pv-inputtext
                 v-model="form.email"
                 type="email"
-                placeholder="admin14@gmail.com"
+                :placeholder="$t('profile.placeholders.email')"
                 :class="{ 'p-invalid': !!fieldErrors.email }"
                 :disabled="!canEdit"
               />
@@ -391,13 +411,13 @@ onMounted(bootstrap);
 
           <div v-if="verificationStep === 1 && activeTab === 'config'" class="form-grid">
             <div class="field">
-              <label>Plan</label>
+              <label>{{ $t('profile.fields.plan') }}</label>
               <pv-dropdown
                 v-model="form.plan"
                 :options="planOptions"
                 option-label="label"
                 option-value="value"
-                placeholder="Selecciona tu plan"
+                :placeholder="$t('profile.placeholders.plan')"
                 :class="{ 'p-invalid': !!fieldErrors.plan }"
                 :disabled="!canEdit"
               />
@@ -405,14 +425,14 @@ onMounted(bootstrap);
             </div>
 
             <div class="field">
-              <label>Password</label>
+              <label>{{ $t('profile.fields.password') }}</label>
               <pv-password
                 v-model="form.password"
                 toggleMask
                 :feedback="false"
                 :class="{ 'p-invalid': !!fieldErrors.password }"
                 inputClass="w-full"
-                placeholder="Actualiza tu password"
+                :placeholder="$t('profile.placeholders.password')"
                 :disabled="!canEdit"
               />
               <small v-if="fieldErrors.password" class="error">{{ fieldErrors.password }}</small>
@@ -420,39 +440,39 @@ onMounted(bootstrap);
           </div>
 
           <div v-if="verificationStep === 2" class="verification-panel">
-            <p>Confirma tu informacion y escribe tu contrasena actual para finalizar.</p>
+            <p>{{ $t('profile.verification.confirmMessage') }}</p>
             <div class="summary-grid">
               <div>
-                <span>Nombre completo</span>
+                <span>{{ $t('profile.summary.fullName') }}</span>
                 <strong>{{ (pendingChanges?.firstName || '') + ' ' + (pendingChanges?.lastName || '') }}</strong>
               </div>
               <div>
-                <span>Correo electronico</span>
+                <span>{{ $t('profile.summary.email') }}</span>
                 <strong>{{ pendingChanges?.email }}</strong>
               </div>
               <div>
-                <span>Plan</span>
-                <strong>{{ pendingChanges?.plan }}</strong>
+                <span>{{ $t('profile.summary.plan') }}</span>
+                <strong>{{ getPlanLabel(pendingChanges?.plan) }}</strong>
               </div>
             </div>
             <pv-password
               v-model="verifyPassword"
               toggleMask
               :feedback="false"
-              placeholder="Contrasena actual"
+              :placeholder="$t('profile.placeholders.currentPassword')"
               inputClass="w-full"
             />
             <small v-if="verifyError" class="error">{{ verifyError }}</small>
           </div>
 
           <div v-if="verificationStep === 3" class="verification-panel success">
-            <p>Tu perfil ha sido verificado. Podras editar nuevamente el {{ lockedUntilLabel }} ({{ lockCountdownLabel }}).</p>
+            <p>{{ $t('profile.verification.success', { date: lockedUntilLabel, countdown: lockCountdownLabel }) }}</p>
           </div>
 
           <div class="actions">
             <template v-if="verificationStep === 1">
               <pv-button
-                label="Restaurar"
+                :label="$t('profile.buttons.reset')"
                 icon="pi pi-refresh"
                 severity="secondary"
                 outlined
@@ -460,7 +480,7 @@ onMounted(bootstrap);
                 :disabled="(!isDirty && !pendingChanges) || saving"
               />
               <pv-button
-                label="Siguiente"
+                :label="$t('profile.buttons.next')"
                 icon="pi pi-arrow-right"
                 @click="handleNext"
                 :disabled="disableNext"
@@ -469,14 +489,14 @@ onMounted(bootstrap);
             <template v-else-if="verificationStep === 2">
               <div class="actions-split">
                 <pv-button
-                  label="Regresar"
+                  :label="$t('profile.buttons.back')"
                   icon="pi pi-arrow-left"
                   outlined
                   @click="handleBack"
                   :disabled="saving"
                 />
                 <pv-button
-                  label="Aceptar"
+                  :label="$t('profile.buttons.confirm')"
                   icon="pi pi-check"
                   @click="handleVerification"
                   :disabled="!verifyPassword || saving"
@@ -486,7 +506,7 @@ onMounted(bootstrap);
             </template>
             <template v-else>
               <div class="lock-note">
-                No podras editar hasta {{ lockedUntilLabel }} ({{ lockCountdownLabel }})
+                {{ $t('profile.verification.lockedMessage', { date: lockedUntilLabel, countdown: lockCountdownLabel }) }}
               </div>
             </template>
           </div>
@@ -496,15 +516,15 @@ onMounted(bootstrap);
 
     <pv-dialog
       v-model:visible="photoDialog"
-      header="Editar foto"
+      :header="$t('profile.photo.title')"
       :modal="true"
       :style="{ width: '420px' }"
     >
       <div class="field">
-        <label>URL de la imagen</label>
+        <label>{{ $t('profile.photo.label') }}</label>
         <pv-inputtext
           v-model="photoInput"
-          placeholder="https://example.com/foto.jpg"
+          :placeholder="$t('profile.photo.placeholder')"
           class="w-full"
         />
         <small v-if="fieldErrors.photo" class="error">{{ fieldErrors.photo }}</small>
@@ -513,8 +533,8 @@ onMounted(bootstrap);
         <img :src="photoInput" alt="preview" />
       </div>
       <template #footer>
-        <pv-button label="Cancelar" severity="secondary" outlined @click="photoDialog = false" />
-        <pv-button label="Guardar" icon="pi pi-check" @click="applyPhoto" />
+        <pv-button :label="$t('profile.buttons.cancel')" severity="secondary" outlined @click="photoDialog = false" />
+        <pv-button :label="$t('profile.buttons.savePhoto')" icon="pi pi-check" @click="applyPhoto" />
       </template>
     </pv-dialog>
   </div>

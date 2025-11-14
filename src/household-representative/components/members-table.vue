@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { Member } from '../models/member.model.js';
+import { useI18n } from 'vue-i18n';
 
-// Props
 const props = defineProps({
   members: {
     type: Array,
@@ -14,35 +14,44 @@ const props = defineProps({
   }
 });
 
-// Emits
 const emit = defineEmits(['view-member']);
 
-// Computed
-const memberInstances = computed(() => {
-  return props.members.map(memberData => new Member(memberData));
-});
+const { t } = useI18n();
 
-// Methods
+const memberInstances = computed(() => props.members.map(memberData => new Member(memberData)));
+
+const statusLabel = status => {
+  const key = `representativeMembers.status.${status ?? 'unknown'}`;
+  const translated = t(key);
+  return translated === key ? status : translated;
+};
+
+const roleLabel = role => {
+  const key = `representativeMembers.roles.${role ?? 'unknown'}`;
+  const translated = t(key);
+  return translated === key ? role : translated;
+};
+
 function handleViewMember(member) {
   emit('view-member', member);
 }
 </script>
 
 <template>
-  <pv-datatable 
-    :value="memberInstances" 
+  <pv-datatable
+    :value="memberInstances"
     :loading="loading"
-    paginator 
+    paginator
     :rows="10"
     :rows-per-page-options="[5, 10, 20]"
     class="members-table"
-    :empty-message="'No se encontraron miembros'"
+    :empty-message="t('representativeMembers.table.empty')"
   >
-    <pv-column field="name" header="Nombre" sortable>
+    <pv-column field="name" :header="t('representativeMembers.table.columns.name')" sortable>
       <template #body="{ data }">
         <div class="member-name">
-          <img 
-            :src="`https://ui-avatars.com/api/?name=${data.name}&background=0D8ABC&color=fff`" 
+          <img
+            :src="`https://ui-avatars.com/api/?name=${data.name}&background=0D8ABC&color=fff`"
             :alt="data.name"
             class="member-avatar"
           />
@@ -50,33 +59,33 @@ function handleViewMember(member) {
         </div>
       </template>
     </pv-column>
-    
-    <pv-column field="status" header="Estado" sortable>
+
+    <pv-column field="status" :header="t('representativeMembers.table.columns.status')" sortable>
       <template #body="{ data }">
-        <pv-tag 
-          :value="data.getStatusLabel()" 
+        <pv-tag
+          :value="statusLabel(data.status)"
           :severity="data.getStatusSeverity()"
         />
       </template>
     </pv-column>
-    
-    <pv-column field="role" header="Rol" sortable>
+
+    <pv-column field="role" :header="t('representativeMembers.table.columns.role')" sortable>
       <template #body="{ data }">
-        <span class="role-text">{{ data.getRoleLabel() }}</span>
+        <span class="role-text">{{ roleLabel(data.role) }}</span>
       </template>
     </pv-column>
-    
-    <pv-column field="totalContributed" header="Total aportado" sortable>
+
+    <pv-column field="totalContributed" :header="t('representativeMembers.table.columns.total')" sortable>
       <template #body="{ data }">
         <span class="amount-text">{{ data.getFormattedTotalContributed() }}</span>
       </template>
     </pv-column>
-    
-    <pv-column header="Acciones" :exportable="false">
+
+    <pv-column :header="t('representativeMembers.table.columns.actions')" :exportable="false">
       <template #body="{ data }">
-        <pv-button 
-          icon="pi pi-eye" 
-          label="Ver" 
+        <pv-button
+          icon="pi pi-eye"
+          :label="t('representativeMembers.table.viewAction')"
           severity="success"
           size="small"
           @click="handleViewMember(data)"
@@ -112,7 +121,6 @@ function handleViewMember(member) {
   font-weight: bold;
 }
 
-/* PrimeVue overrides for dark theme */
 :deep(.p-datatable) {
   background-color: transparent;
 }

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted, computed, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -55,16 +55,16 @@ const editAmount = ref(0)
 const editingRow = ref(null)
 const activeContributionId = ref('')
 
-// Tabla 2 (informativa): distribuciÃ³n proporcional acumulativa
+// Tabla 2 (informativa): distribución proporcional acumulativa
 const allocRows = ref([])
 const memberTotals = ref([])
-// ContribuciÃ³n (Ãºltima) por billId
+// Contribución (última) por billId
 const contribByBill = ref(new Map())
 const billsRef = ref([])
 // member-contribution status cache: key `${billId}::${memberId}` -> { id, status, amount, payedAt, contributionId }
 const statusByMemberAndBill = ref(new Map())
 
-// Agrupar por bill para mostrarlos en pestaÃ±as
+// Agrupar por bill para mostrarlos en pestañas
 const allocByBill = computed(() => {
   const map = new Map()
   for (const r of allocRows.value || []) {
@@ -89,7 +89,7 @@ const allocByBill = computed(() => {
   return arr
 })
 
-// Grupos que tienen una contribución creada (para renderizar una "ventana" por bill)
+// Grupos que tienen una contribuci�n creada (para renderizar una "ventana" por bill)
 const groupsWithContribution = computed(() => {
   const groups = allocByBill.value || []
   const byId = new Map(groups.map(g => [String(g.billId), g]))
@@ -255,7 +255,7 @@ async function loadData(){
     await recalcAllocTable({ users: u, members: m, bills: b, memberContribs })
   }catch(e){
     console.error(e)
-    error.value = e?.message || 'Could not load information'
+    error.value = e?.message || t('representativeContributions.messages.loadError')
   } finally { loading.value = false }
 }
 
@@ -267,10 +267,10 @@ async function saveIncome(){
   error.value = '';
   success.value = '';
   try{
-    if(amount <= 0) throw new Error('Enter an amount greater than zero');
+    if(amount <= 0) throw new Error(t('representativeContributions.errors.amountGreaterThanZero'));
     if(!row?.memberId){
       const rep = JSON.parse(localStorage.getItem('user') || '{}');
-      if(!rep?.id || !householdId.value) throw new Error('Invalid user/household');
+      if(!rep?.id || !householdId.value) throw new Error(t('representativeContributions.errors.invalidUserHousehold'));
       const now = new Date().toISOString();
       const payload = { id: `HM-${Date.now()}`, userId: String(rep.id), householdId: householdId.value, income: amount.toFixed(2), joinedAt: now, createdAt: now, updatedAt: now };
       const created = await localHttp.post('/householdMember', payload);
@@ -278,15 +278,15 @@ async function saveIncome(){
     } else {
       await localHttp.patch(`/householdMember/${row.memberId}`, { income: amount.toFixed(2) });
     }
-    success.value = 'Income updated';
+    success.value = t('representativeContributions.messages.incomeUpdated');
     editVisible.value = false;
     await loadData();
   } catch(e){
     console.error(e);
-    error.value = e?.message || 'Could not update income';
+    error.value = e?.message || t('representativeContributions.messages.incomeUpdateError');
   }
 }
-// Crear contribuciÃ³n para un bill
+// Crear contribución para un bill
 const createContribVisible = ref(false)
 const currentBill = ref(null)
 const contribDesc = ref('')
@@ -305,19 +305,19 @@ function openCreateContribution(group){
 async function createContribution(){
   try{
     const billId = String(selectedBillId.value || currentBill.value?.billId || '')
-    if(!billId) throw new Error('Bill not selected')
-    if(!householdId.value) throw new Error('Invalid householdId')
+    if(!billId) throw new Error(t('representativeContributions.errors.billNotSelected'))
+    if(!householdId.value) throw new Error(t('representativeContributions.errors.invalidHousehold'))
     
     // Get the bill to validate paymentDay
     const bill = billsRef.value.find(b => String(b.id) === billId)
-    if(!bill) throw new Error('Bill not found')
+    if(!bill) throw new Error(t('representativeContributions.errors.billNotFound'))
     
     // Validate deadlineForMembers is not after paymentDay
     if(contribDeadline.value && bill.paymentDay) {
       const deadline = new Date(contribDeadline.value)
       const paymentDay = new Date(bill.paymentDay)
       if(deadline > paymentDay) {
-        throw new Error('Deadline for members cannot be after the payment day')
+        throw new Error(t('representativeContributions.errors.deadlineAfterPayment'))
       }
     }
     
@@ -333,12 +333,12 @@ async function createContribution(){
       updatedAt: now
     }
     await localHttp.post('/contributions', payload)
-    success.value = 'Contribution created'
+    success.value = t('representativeContributions.messages.contributionCreated')
     createContribVisible.value = false
     await loadData()
   }catch(e){
     console.error(e)
-    error.value = e?.message || 'Could not create contribution'
+    error.value = e?.message || t('representativeContributions.messages.contributionCreateError')
   }
 }
 // Recalculate proportional allocation table (informational only)
@@ -421,7 +421,7 @@ async function recalcAllocTable({ users = [], members = [], bills = [], memberCo
     memberTotals.value = totals
   } catch (e) {
     console.error(e)
-    error.value = e?.message || 'Could not recalculate distribution'
+    error.value = e?.message || t('representativeContributions.messages.distributionError')
   }
 }
 
@@ -508,11 +508,13 @@ async function saveUserIncome(){
   error.value = ''
   success.value = ''
   try{
-    if(userTotalIncome.value <= 0) throw new Error('Enter an amount greater than zero')
+    if(userTotalIncome.value <= 0) throw new Error(t('representativeContributions.errors.amountGreaterThanZero'))
     
     // Validate percentages sum to 100
     const totalPercentage = incomeAllocations.value.reduce((sum, a) => sum + Number(a.percentage || 0), 0)
-    if(Math.abs(totalPercentage - 100) > 0.01) throw new Error(`Percentages must sum to 100% (current: ${totalPercentage}%)`)
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+      throw new Error(t('representativeContributions.errors.percentSum', { current: totalPercentage.toFixed(2) }))
+    }
     
     const now = new Date().toISOString()
     
@@ -577,12 +579,12 @@ async function saveUserIncome(){
       }
     }
     
-    success.value = 'Income and allocations updated successfully'
+    success.value = t('representativeContributions.messages.incomeAllocUpdated')
     userIncomeVisible.value = false
     await loadUserIncome(userId.value)
   }catch(e){
     console.error(e)
-    error.value = e?.message || 'Could not update income'
+    error.value = e?.message || t('representativeContributions.messages.incomeUpdateError')
   }
 }
 
@@ -591,7 +593,7 @@ async function toggleMemberStatus(row){
     if(!row?.memberId || !row?.billId) return
     // Need contribution id for this bill
     const c = contribByBill.value.get(String(row.billId))
-    if(!c?.id) throw new Error('No contribution found for this bill')
+    if(!c?.id) throw new Error(t('representativeContributions.errors.noContribution'))
     const key = `${String(row.billId)}::${String(row.memberId)}`
     const current = statusByMemberAndBill.value.get(key)
     const now = new Date().toISOString()
@@ -620,7 +622,7 @@ async function toggleMemberStatus(row){
     }
   }catch(e){
     console.error(e)
-    error.value = e?.message || 'Could not update status'
+    error.value = e?.message || t('representativeContributions.messages.statusUpdateError')
   }
 }
 
@@ -631,7 +633,7 @@ async function toggleMemberStatus(row){
     <Toolbar class="mb-3">
       <template #start>
         <div class="flex align-items-center gap-2">
-          <h2 class="m-0">Contributions</h2>
+          <h2 class="m-0">{{ t('representativeContributions.title') }}</h2>
           <Tag severity="info" :value="householdId || '-'" />
         </div>
       </template>
@@ -641,8 +643,8 @@ async function toggleMemberStatus(row){
     <template v-if="plan !== 'FREE' && !householdId">
       <div class="premium-houses">
         <div class="flex justify-content-between align-items-center mb-3">
-          <h3 class="m-0">Your households</h3>
-          <Button size="small" label="Edit income" @click="openEditUserIncome" />
+          <h3 class="m-0">{{ t('representativeContributions.premium.yourHouseholds') }}</h3>
+          <Button size="small" :label="t('representativeContributions.buttons.editIncome')" @click="openEditUserIncome" />
         </div>
         <div class="grid">
           <div v-for="h in households" :key="h.id" class="col-12">
@@ -656,32 +658,32 @@ async function toggleMemberStatus(row){
                 <span class="dot d3"></span>
               </div>
               <div class="mock-content">
-                <div class="mock-title">{{ h.name || 'Household' }}</div>
-                <div class="mock-desc">{{ h.description || 'No description' }}</div>
-                <div class="mock-id">ID: {{ h.id }}</div>
+                <div class="mock-title">{{ h.name || t('representativeContributions.premium.card.fallbackName') }}</div>
+                <div class="mock-desc">{{ h.description || t('representativeContributions.premium.card.noDescription') }}</div>
+                <div class="mock-id">{{ t('representativeContributions.premium.card.idLabel') }}: {{ h.id }}</div>
               </div>
-              <button type="button" class="mock-cta" title="Open" @click.stop="openHousehold(h)">
+              <button type="button" class="mock-cta" :title="t('representativeContributions.premium.card.open')" :aria-label="t('representativeContributions.premium.card.open')" @click.stop="openHousehold(h)">
                 <i class="pi pi-angle-right"></i>
               </button>
             </div>
           </div>
-          <div v-if="!households.length" class="col-12"><Message :closable="false">No households found.</Message></div>
+          <div v-if="!households.length" class="col-12"><Message :closable="false">{{ t('representativeContributions.premium.empty') }}</Message></div>
         </div>
       </div>
       
       <!-- Dialog to edit user income and allocations -->
-      <Dialog v-model:visible="userIncomeVisible" modal header="Edit income and allocations" :style="{ width: '40rem' }">
+      <Dialog v-model:visible="userIncomeVisible" modal :header="t('representativeContributions.premium.dialog.title')" :style="{ width: '40rem' }">
         <div class="flex flex-column gap-3">
           <div>
-            <label class="block mb-2">Total income</label>
+            <label class="block mb-2">{{ t('representativeContributions.premium.dialog.totalIncome') }}</label>
             <InputNumber v-model="userTotalIncome" mode="currency" currency="PEN" :min="0" :step="1" :useGrouping="true" class="w-full" />
           </div>
           
           <div>
-            <label class="block mb-2">Allocate by household</label>
+            <label class="block mb-2">{{ t('representativeContributions.premium.dialog.allocateLabel') }}</label>
             <DataTable :value="incomeAllocations" class="p-datatable-sm">
-              <Column field="householdName" header="Household" />
-              <Column field="percentage" header="Percentage (%)">
+              <Column field="householdName" :header="t('representativeContributions.premium.dialog.columns.household')" />
+              <Column field="percentage" :header="t('representativeContributions.premium.dialog.columns.percentage')">
                 <template #body="{ data }">
                   <InputNumber v-model="data.percentage" :min="0" :max="100" :step="0.1" suffix=" %" />
                 </template>
@@ -689,14 +691,14 @@ async function toggleMemberStatus(row){
             </DataTable>
             <div class="mt-2 text-sm">
               <span :style="{ color: Math.abs((incomeAllocations.reduce((sum, a) => sum + Number(a.percentage || 0), 0)) - 100) < 0.01 ? '#22c55e' : '#ef4444' }">
-                Total: {{ (incomeAllocations.reduce((sum, a) => sum + Number(a.percentage || 0), 0)).toFixed(2) }}%
+                {{ t('representativeContributions.premium.dialog.totalLabel') }} {{ (incomeAllocations.reduce((sum, a) => sum + Number(a.percentage || 0), 0)).toFixed(2) }}%
               </span>
             </div>
           </div>
           
           <div class="flex justify-content-end gap-2">
-            <Button label="Cancel" severity="secondary" @click="userIncomeVisible = false" />
-            <Button label="Save" @click="saveUserIncome" />
+            <Button :label="t('representativeContributions.buttons.cancel')" severity="secondary" @click="userIncomeVisible = false" />
+            <Button :label="t('representativeContributions.buttons.save')" @click="saveUserIncome" />
           </div>
         </div>
       </Dialog>
@@ -706,50 +708,50 @@ async function toggleMemberStatus(row){
     <template v-else>
       <!-- Back to households for PREMIUM -->
       <div v-if="plan !== 'FREE'" class="mb-2">
-        <Button size="small" icon="pi pi-arrow-left" label="Back to households" outlined @click="backToHouseholds" />
+        <Button size="small" icon="pi pi-arrow-left" :label="t('representativeContributions.buttons.backToHouseholds')" outlined @click="backToHouseholds" />
       </div>
       <!-- Resumen: tarjetas en lugar de tabla -->
       <div class="flex justify-content-end mb-2">
-        <Button size="small" label="Edit income" @click="openEdit(rows[0])" />
+        <Button size="small" :label="t('representativeContributions.buttons.editIncome')" @click="openEdit(rows[0])" />
       </div>
       <div class="metric-grid">
         <div class="metric-card">
-          <div class="metric-title"><i class="pi pi-dollar mr-2"></i>Income</div>
+          <div class="metric-title"><i class="pi pi-dollar mr-2"></i>{{ t('representativeContributions.metrics.income') }}</div>
           <div class="metric-value">{{ formatMoney(rows[0]?.lastIncome || 0) }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-title"><i class="pi pi-percentage mr-2"></i>Compliance %</div>
+          <div class="metric-title"><i class="pi pi-percentage mr-2"></i>{{ t('representativeContributions.metrics.compliance') }}</div>
           <div class="metric-value">{{ (rows[0]?.compliance || 0) + '%' }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-title"><i class="pi pi-money-bill mr-2"></i>My total contribution</div>
+          <div class="metric-title"><i class="pi pi-money-bill mr-2"></i>{{ t('representativeContributions.metrics.myTotal') }}</div>
           <div class="metric-value">{{ formatMoney(rows[0]?.myTotal || 0) }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-title"><i class="pi pi-users mr-2"></i>Number of household members</div>
+          <div class="metric-title"><i class="pi pi-users mr-2"></i>{{ t('representativeContributions.metrics.members') }}</div>
           <div class="metric-value">{{ rows[0]?.memberCount || 0 }}</div>
         </div>
       </div>
       <Message v-if="success" severity="success" class="mt-2" :closable="false">{{ success }}</Message>
       <Message v-if="error" severity="error" class="mt-2" :closable="false">{{ error }}</Message>
 
-      <Dialog v-model:visible="editVisible" modal header="Edit income" :style="{ width: '30rem' }">
+      <Dialog v-model:visible="editVisible" modal :header="t('representativeContributions.simpleDialog.title')" :style="{ width: '30rem' }">
         <div class="flex flex-column gap-3">
           <div>
-            <label class="block mb-2">Amount</label>
+            <label class="block mb-2">{{ t('representativeContributions.simpleDialog.amount') }}</label>
             <InputNumber v-model="editAmount" mode="currency" currency="PEN" :min="0" :step="1" :useGrouping="true" class="w-full" />
           </div>
           <div class="flex justify-content-end gap-2">
-            <Button label="Cancel" severity="secondary" @click="editVisible = false" />
-            <Button label="Save" @click="saveIncome" />
+            <Button :label="t('representativeContributions.buttons.cancel')" severity="secondary" @click="editVisible = false" />
+            <Button :label="t('representativeContributions.buttons.save')" @click="saveIncome" />
           </div>
         </div>
       </Dialog>
 
-      <!-- Panels por cada bill con contribución -->
-      <h3 class="mt-5">Cumulative proportional distribution</h3>
+      <!-- Panels por cada bill con contribuci�n -->
+      <h3 class="mt-5">{{ t('representativeContributions.distribution.title') }}</h3>
       <div class="flex justify-content-end mb-2">
-        <Button size="small" label="Add contribution" @click="openCreateContribution({})" />
+        <Button size="small" :label="t('representativeContributions.buttons.addContribution')" @click="openCreateContribution({})" />
       </div>
       <div class="bill-tabs-wrapper">
         <template v-if="(groupsWithContribution && groupsWithContribution.length)">
@@ -759,63 +761,63 @@ async function toggleMemberStatus(row){
               <i :class="['pi', isExpanded(g.billId) ? 'pi-chevron-down' : 'pi-chevron-right']"></i>
             </div>
             <div v-show="isExpanded(g.billId)" class="bill-content">
-              <DataTable :value="g.rows" class="p-datatable-sm" :emptyMessage="'No data'">
-                <Column field="memberName" header="Member" />
-                <Column field="incomeBefore" header="Current income">
+              <DataTable :value="g.rows" class="p-datatable-sm" :emptyMessage="t('representativeContributions.distribution.empty')">
+                <Column field="memberName" :header="t('representativeContributions.distribution.columns.member')" />
+                <Column field="incomeBefore" :header="t('representativeContributions.distribution.columns.income')">
                   <template #body="{ data }">{{ formatMoney(data.incomeBefore) }}</template>
                 </Column>
-                <Column field="percent" header="% Contribution">
+                <Column field="percent" :header="t('representativeContributions.distribution.columns.percent')">
                   <template #body="{ data }">{{ data.percent }}%</template>
                 </Column>
-                <Column field="assigned" header="Assigned amount">
+                <Column field="assigned" :header="t('representativeContributions.distribution.columns.assigned')">
                   <template #body="{ data }">{{ formatMoney(data.assigned) }}</template>
                 </Column>
-                <Column field="status" header="Status">
+                <Column field="status" :header="t('representativeContributions.distribution.columns.status')">
                   <template #body="{ data }">
-                    <Tag :severity="data.status ? 'success' : 'warning'" :value="data.status ? 'Completed' : 'Pending'" />
+                    <Tag :severity="data.status ? 'success' : 'warning'" :value="data.status ? t('representativeContributions.status.completed') : t('representativeContributions.status.pending')" />
                   </template>
                 </Column>
-                <Column header="Actions">
+                <Column :header="t('representativeContributions.distribution.columns.actions')">
                   <template #body="{ data }">
-                    <Button size="small" :label="data.status ? 'Mark pending' : 'Mark paid'" :icon="data.status ? 'pi pi-undo' : 'pi pi-check'" @click="toggleMemberStatus(data)" />
+                    <Button size="small" :label="data.status ? t('representativeContributions.buttons.markPending') : t('representativeContributions.buttons.markPaid')" :icon="data.status ? 'pi pi-undo' : 'pi pi-check'" @click="toggleMemberStatus(data)" />
                   </template>
                 </Column>
               </DataTable>
             </div>
           </div>
         </template>
-        <div v-else class="empty-panel">No data</div>
+        <div v-else class="empty-panel">{{ t('representativeContributions.distribution.empty') }}</div>
       </div>
-      <!-- Dialog crear contribuciÃ³n -->
-      <Dialog v-model:visible="createContribVisible" modal header="Create contribution" :style="{ width: '36rem' }">
+      <!-- Dialog crear contribución -->
+      <Dialog v-model:visible="createContribVisible" modal :header="t('representativeContributions.createDialog.title')" :style="{ width: '36rem' }">
         <div class="flex flex-column gap-3">
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
           <div>
-            <label class="block mb-2">Select a bill</label>
-            <Dropdown class="w-full" v-model="selectedBillId" :options="billOptions" optionLabel="label" optionValue="value" placeholder="Choose a bill" />
+            <label class="block mb-2">{{ t('representativeContributions.createDialog.selectBill') }}</label>
+            <Dropdown class="w-full" v-model="selectedBillId" :options="billOptions" optionLabel="label" optionValue="value" :placeholder="t('representativeContributions.createDialog.billPlaceholder')" />
           </div>
           <div>
-            <label class="block mb-2">Description</label>
-            <input class="p-inputtext p-component w-full" v-model="contribDesc" placeholder="Ex: Monthly contribution" />
+            <label class="block mb-2">{{ t('representativeContributions.createDialog.description') }}</label>
+            <input class="p-inputtext p-component w-full" v-model="contribDesc" :placeholder="t('representativeContributions.createDialog.descriptionPlaceholder')" />
           </div>
           <div>
-            <label class="block mb-2">Deadline</label>
+            <label class="block mb-2">{{ t('representativeContributions.createDialog.deadline') }}</label>
             <Calendar v-model="contribDeadline" showIcon :manualInput="true" :maxDate="currentBill?.paymentDay ? new Date(currentBill.paymentDay) : null" :pt="{ input: { class: 'w-full' } }" />
             <small class="text-xs text-color-secondary" v-if="currentBill?.paymentDay">
-              (Must be before or on {{ new Date(currentBill.paymentDay).toLocaleDateString() }})
+              {{ t('representativeContributions.createDialog.deadlineNote') }} {{ new Date(currentBill.paymentDay).toLocaleDateString() }}
             </small>
           </div>
           <div class="flex justify-content-end gap-2">
-            <Button label="Cancel" severity="secondary" @click="createContribVisible = false" />
-            <Button label="Create" @click="createContribution" />
+            <Button :label="t('representativeContributions.buttons.cancel')" severity="secondary" @click="createContribVisible = false" />
+            <Button :label="t('representativeContributions.buttons.create')" @click="createContribution" />
           </div>
         </div>
       </Dialog>
 
-      <h4 class="mt-3">Totals by member</h4>
-      <DataTable :value="memberTotals" class="p-datatable-sm" :emptyMessage="'No data'">
-        <Column field="memberName" header="Member" />
-        <Column field="total" header="Total assigned">
+      <h4 class="mt-3">{{ t('representativeContributions.memberTotals.title') }}</h4>
+      <DataTable :value="memberTotals" class="p-datatable-sm" :emptyMessage="t('representativeContributions.memberTotals.empty')">
+        <Column field="memberName" :header="t('representativeContributions.memberTotals.columns.member')" />
+        <Column field="total" :header="t('representativeContributions.memberTotals.columns.total')">
           <template #body="{ data }">{{ formatMoney(data.total) }}</template>
         </Column>
       </DataTable>
@@ -850,9 +852,9 @@ async function toggleMemberStatus(row){
 }
 :deep(.bill-panel-container) { border: 1px solid #9ec9ff; border-radius: 12px; padding: 0; }
 
-/* Panel vacÃ­o (mock) */
+/* Panel vacío (mock) */
 .empty-panel { display: flex; align-items: center; justify-content: center; min-height: 280px; }
-/* Ocultar tabla y textos; dejar solo el botón */
+/* Ocultar tabla y textos; dejar solo el bot�n */
 .bill-title { display:none; }
 .bill-meta span { display:none; }
 
@@ -898,6 +900,18 @@ async function toggleMemberStatus(row){
 :deep(.p-datatable-sm .p-datatable-tbody > tr > td) { padding: 0.5rem; }
 :deep(.p-inputnumber) { width: 100%; }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

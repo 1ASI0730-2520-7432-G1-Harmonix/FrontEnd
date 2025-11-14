@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { STATUS_OPTIONS, ROLE_OPTIONS } from '../models/member.model.js';
+import { useI18n } from 'vue-i18n';
 
-// Props
 const props = defineProps({
   searchTerm: {
     type: String,
@@ -18,15 +18,28 @@ const props = defineProps({
   }
 });
 
-// Emits
 const emit = defineEmits(['update:searchTerm', 'update:statusFilter', 'update:roleFilter', 'search', 'clear-filters']);
 
-// Local reactive data
 const localSearchTerm = ref(props.searchTerm);
 const localStatusFilter = ref(props.statusFilter);
 const localRoleFilter = ref(props.roleFilter);
 
-// Methods
+const { t } = useI18n();
+
+const translatedStatusOptions = computed(() =>
+  STATUS_OPTIONS.map(option => ({
+    ...option,
+    label: t(`representativeMembers.filters.statusOptions.${option.value ?? 'all'}`)
+  }))
+);
+
+const translatedRoleOptions = computed(() =>
+  ROLE_OPTIONS.map(option => ({
+    ...option,
+    label: t(`representativeMembers.filters.roleOptions.${option.value ?? 'all'}`)
+  }))
+);
+
 function handleSearch() {
   emit('update:searchTerm', localSearchTerm.value);
   emit('update:statusFilter', localStatusFilter.value);
@@ -50,45 +63,45 @@ function handleClearFilters() {
     <div class="search-section">
       <span class="p-input-icon-left">
         <i class="pi pi-search" />
-        <pv-inputtext 
-          v-model="localSearchTerm" 
-          placeholder="Buscar miembro"
+        <pv-inputtext
+          v-model="localSearchTerm"
+          :placeholder="t('representativeMembers.filters.searchPlaceholder')"
           class="search-input"
           @keyup.enter="handleSearch"
         />
       </span>
     </div>
-    
+
     <div class="filter-section">
-      <pv-dropdown 
-        v-model="localStatusFilter" 
-        :options="STATUS_OPTIONS" 
-        option-label="label" 
+      <pv-dropdown
+        v-model="localStatusFilter"
+        :options="translatedStatusOptions"
+        option-label="label"
         option-value="value"
-        placeholder="Estado"
+        :placeholder="t('representativeMembers.filters.statusPlaceholder')"
         class="filter-dropdown"
       />
-      
-      <pv-dropdown 
-        v-model="localRoleFilter" 
-        :options="ROLE_OPTIONS" 
-        option-label="label" 
+
+      <pv-dropdown
+        v-model="localRoleFilter"
+        :options="translatedRoleOptions"
+        option-label="label"
         option-value="value"
-        placeholder="Rol"
+        :placeholder="t('representativeMembers.filters.rolePlaceholder')"
         class="filter-dropdown"
       />
-      
-      <pv-button 
-        label="Buscar" 
-        icon="pi pi-search" 
+
+      <pv-button
+        :label="t('representativeMembers.filters.searchButton')"
+        icon="pi pi-search"
         @click="handleSearch"
         class="search-button"
       />
-      
-      <pv-button 
-        label="Limpiar" 
-        icon="pi pi-times" 
-        outlined 
+
+      <pv-button
+        :label="t('representativeMembers.filters.clearButton')"
+        icon="pi pi-times"
+        outlined
         @click="handleClearFilters"
         class="clear-button"
       />
@@ -133,7 +146,6 @@ function handleClearFilters() {
   border-color: #666;
 }
 
-/* PrimeVue overrides for dark theme */
 :deep(.p-inputtext) {
   background-color: #333;
   border-color: #555;
@@ -149,13 +161,12 @@ function handleClearFilters() {
   color: white;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .search-filter-bar {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-section {
     flex-wrap: wrap;
     justify-content: center;

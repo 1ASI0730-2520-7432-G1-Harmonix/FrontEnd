@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import memberPipeline from '../services/member-assembler.service.js';
 import { MemberFilters } from '../models/member.model.js';
 import MembersTable from './members-table.vue';
@@ -9,10 +8,10 @@ import MemberDetailsModal from './member-details-modal.vue';
 import AddMemberForm from './add-member-form.vue';
 import { HouseholdService } from '@/households/infrastructure/household.service';
 import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
+const toast = useToast();
+const { t } = useI18n();
 
-const router = useRouter();
-
-// Reactive data
 const members = ref([]);
 const loading = ref(false);
 const error = ref('');
@@ -23,21 +22,14 @@ const selectedMember = ref(null);
 const user = ref(null);
 const plan = ref('FREE');
 const household = ref(null);
-const membersLimit = ref(null);
-const toast = useToast();
 
-// Computed properties
-const filteredMembers = computed(() => {
-  return members.value.filter(member => member.role === 'member');
-});
+const filteredMembers = computed(() => members.value.filter(member => member.role === 'member'));
 
-// Methods
 onMounted(async () => {
   const userData = localStorage.getItem('user');
   if (userData) {
     user.value = JSON.parse(userData);
     plan.value = user.value?.plan || 'FREE';
-    membersLimit.value = plan.value === 'FREE' ? 3 : null;
   }
   await Promise.all([loadMembers(), loadHousehold()]);
 });
@@ -45,11 +37,10 @@ onMounted(async () => {
 async function loadMembers() {
   loading.value = true;
   error.value = '';
-  
   try {
     members.value = await memberPipeline.processMemberData(filters.value);
   } catch (err) {
-    error.value = 'Error loading household members';
+    error.value = t('representativeMembers.toasts.loadError');
     console.error('Error loading members:', err);
   } finally {
     loading.value = false;
@@ -59,8 +50,7 @@ async function loadMembers() {
 async function loadHousehold() {
   try {
     if (!user.value?.householdId) return;
-    const h = await HouseholdService.getHouseholdById(user.value.householdId);
-    household.value = h;
+    household.value = await HouseholdService.getHouseholdById(user.value.householdId);
   } catch (err) {
     console.error('Error loading household info:', err);
   }
@@ -85,8 +75,8 @@ function addNewMember() {
     const cap = Number(household.value?.memberCount || 0);
     toast.add({
       severity: 'warn',
-      summary: 'Límite alcanzado',
-      detail: `Este hogar permite hasta ${cap} miembros.`,
+      summary: t('representativeMembers.toasts.limit.summary'),
+      detail: t('representativeMembers.toasts.limit.detail', { count: cap }),
       life: 3000
     });
     return;
@@ -114,11 +104,11 @@ async function handleMemberAdded() {
   await loadHousehold();
 }
 
-// Restriction computed based on household.memberCount (cap)
 const maxMembers = computed(() => {
   const m = Number(household.value?.memberCount);
-  return Number.isFinite(m) && m > 0 ? m : null; // null means no explicit cap
+  return Number.isFinite(m) && m > 0 ? m : null;
 });
+
 const canAddMember = computed(() => {
   if (!maxMembers.value) return true;
   return filteredMembers.value.length < maxMembers.value;
@@ -127,19 +117,24 @@ const canAddMember = computed(() => {
 
 <template>
   <div class="members-container">
-    <!-- Welcome Section -->
     <div class="welcome-card border-round mb-3">
       <div class="flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
-          <h1 class="title m-0">Miembros del hogar</h1>
-          <p class="subtitle mt-2 mb-0">Gestiona los miembros de tu hogar</p>
+          <h1 class="title m-0">{{ t('representativeMembers.header.title') }}</h1>
+          <p class="subtitle mt-2 mb-0">{{ t('representativeMembers.header.subtitle') }}</p>
         </div>
         <div class="flex align-items-center gap-2">
           <div class="members-count-pill">
             <i class="pi pi-users mr-2"></i>
-            <strong>{{ filteredMembers.length }}</strong> miembros
+            <strong>{{ filteredMembers.length }}</strong>
+            <span>{{ t('representativeMembers.header.membersSuffix') }}</span>
           </div>
-          <button class="notif-bell" title="Notificaciones" aria-label="Notificaciones" type="button">
+          <button
+            class="notif-bell"
+            :title="t('representativeMembers.header.notifications')"
+            :aria-label="t('representativeMembers.header.notifications')"
+            type="button"
+          >
             <i class="pi pi-bell"></i>
             <span class="dot-indicator" />
           </button>
@@ -147,7 +142,6 @@ const canAddMember = computed(() => {
       </div>
     </div>
 
-    <!-- Search and Filter Bar -->
     <div class="search-section mb-3">
       <MembersSearchBar
         :search-term="filters.searchTerm"
@@ -161,12 +155,10 @@ const canAddMember = computed(() => {
       />
     </div>
 
-    <!-- Error Message -->
     <pv-message v-if="error" severity="error" :closable="false" class="mb-3">
       {{ error }}
     </pv-message>
 
-    <!-- Members Table -->
     <pv-card class="members-card">
       <template #content>
         <MembersTable
@@ -177,24 +169,21 @@ const canAddMember = computed(() => {
       </template>
     </pv-card>
 
-    <!-- Add Member Button -->
     <div class="add-member-section">
-      <pv-button 
-        icon="pi pi-plus" 
-        label="Añadir nuevo miembro"
+      <pv-button
+        icon="pi pi-plus"
+        :label="t('representativeMembers.actions.addMember')"
         class="add-member-button"
         @click="addNewMember"
         :disabled="!canAddMember"
       />
     </div>
 
-    <!-- Member Details Modal -->
     <MemberDetailsModal
       v-model:visible="showMemberDetailsDialog"
       :member="selectedMember"
     />
 
-    <!-- Add Member Form -->
     <AddMemberForm
       v-model:visible="showAddMemberDialog"
       :household-id="user?.householdId"
@@ -206,7 +195,7 @@ const canAddMember = computed(() => {
 <style scoped>
 .members-container {
   padding: 1rem;
-  background: var(#f8f9fa);
+  background: #f8f9fa;
   min-height: 100vh;
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -220,17 +209,6 @@ const canAddMember = computed(() => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 1.5rem;
 }
 
 .members-card {
@@ -267,7 +245,6 @@ const canAddMember = computed(() => {
   padding: 1rem 0;
 }
 
-/* PrimeVue overrides for consistent theme */
 :deep(.p-card) {
   background: #fff;
   color: #0f172a;
@@ -288,7 +265,6 @@ const canAddMember = computed(() => {
   color: #0f172a;
   border-bottom: 1px solid rgba(15,23,42,.08);
   border-radius: 16px 16px 0 0;
-  font-weight: 700;
 }
 
 :deep(.p-dialog-content) {
@@ -300,7 +276,6 @@ const canAddMember = computed(() => {
   border-top: 1px solid rgba(15,23,42,.08);
 }
 
-/* Message styling */
 :deep(.p-message) {
   border-radius: 12px;
   border: none;
@@ -313,7 +288,6 @@ const canAddMember = computed(() => {
   border-left: 4px solid #dc2626;
 }
 
-/* Button styling consistency */
 :deep(.p-button) {
   border-radius: 10px;
   font-weight: 600;
@@ -332,7 +306,6 @@ const canAddMember = computed(() => {
   box-shadow: 0 6px 16px rgba(30,109,255,.35);
 }
 
-/* Welcome header inspired by dashboard */
 .welcome-card {
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.06);
@@ -340,59 +313,59 @@ const canAddMember = computed(() => {
   padding: 1.25rem 1.5rem;
 }
 
-.welcome-card .title { 
-  font-size: 1.75rem; 
-  font-weight: 800; 
-  color: #0f172a; 
+.welcome-card .title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.welcome-card .subtitle { 
-  color: #6b7280; 
+.welcome-card .subtitle {
+  color: #6b7280;
 }
 
-.members-count-pill { 
-  padding: .45rem .7rem; 
-  border-radius: 999px; 
-  background: #f1f5f9; 
-  color: #0f172a; 
+.members-count-pill {
+  padding: .45rem .7rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
   border: 1px solid rgba(15,23,42,.08);
   font-size: 0.9rem;
 }
 
-.notif-bell { 
-  display:inline-flex; 
-  align-items:center; 
-  justify-content:center; 
-  width:38px; 
-  height:38px; 
-  border-radius:999px; 
-  background:#f1f5f9; 
-  border:1px solid rgba(15,23,42,.08); 
-  color:#0f172a; 
-  position:relative; 
-  transition: all .15s ease; 
+.notif-bell {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  background:#f1f5f9;
+  border:1px solid rgba(15,23,42,.08);
+  color:#0f172a;
+  position:relative;
+  transition: all .15s ease;
   cursor: pointer;
 }
 
-.notif-bell:hover { 
-  background:#fff; 
-  box-shadow:0 6px 14px rgba(15,23,42,.08); 
-  transform: translateY(-1px); 
+.notif-bell:hover {
+  background:#fff;
+  box-shadow:0 6px 14px rgba(15,23,42,.08);
+  transform: translateY(-1px);
 }
 
-.notif-bell i { 
-  font-size: 1rem; 
+.notif-bell i {
+  font-size: 1rem;
 }
 
-.notif-bell .dot-indicator { 
-  position:absolute; 
-  top:6px; 
-  right:8px; 
-  width:8px; 
-  height:8px; 
-  border-radius:999px; 
-  background:#22c55e; 
-  box-shadow:0 0 0 2px #fff; 
+.notif-bell .dot-indicator {
+  position:absolute;
+  top:6px;
+  right:8px;
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:#22c55e;
+  box-shadow:0 0 0 2px #fff;
 }
 
 .search-section {
@@ -403,16 +376,15 @@ const canAddMember = computed(() => {
   box-shadow: 0 4px 12px rgba(15,23,42,.04);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .members-container {
     padding: 1rem;
   }
-  
+
   .welcome-card .title {
     font-size: 1.5rem;
   }
-  
+
   .welcome-card .flex {
     flex-direction: column;
     align-items: flex-start;

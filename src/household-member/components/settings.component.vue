@@ -37,7 +37,6 @@ const displayLocale = computed(() => (locale.value || form.value.language || '')
 function applyDarkMode(flag) {
   document.documentElement.classList.toggle('dark', !!flag)
 }
-
 function formatDate(iso) {
   try {
     return new Date(iso).toLocaleString()
@@ -47,6 +46,7 @@ function formatDate(iso) {
 }
 
 const isDirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(lastSaved.value))
+
 
 onMounted(async () => {
   try {

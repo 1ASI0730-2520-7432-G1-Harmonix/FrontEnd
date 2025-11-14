@@ -3,51 +3,24 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import httpInstance from '@/shared/services/http.instance';
 import { HouseholdService } from '@/households/infrastructure/household.service';
+import { useI18n } from 'vue-i18n';
 
-/**
- * Add Member Form Component
- * 
- * This component provides a form interface for adding new members to a household.
- * It includes validation for email uniqueness, password confirmation, and form validation.
- * The component follows the design pattern shown in the reference image with a dark theme
- * and blue accent colors.
- * 
- * @component AddMemberForm
- * @example
- * <AddMemberForm 
- *   v-model:visible="showDialog" 
- *   :household-id="householdId"
- *   @member-added="handleMemberAdded" 
- * />
- */
-
-// Props
 const props = defineProps({
-  /**
-   * Controls the visibility of the dialog
-   * @type {Boolean}
-   */
   visible: {
     type: Boolean,
     default: false
   },
-  /**
-   * The household ID to assign the new member to
-   * @type {String}
-   */
   householdId: {
     type: String,
     required: true
   }
 });
 
-// Emits
 const emit = defineEmits(['update:visible', 'member-added']);
 
-// Composables
 const toast = useToast();
+const { t } = useI18n();
 
-// Reactive data
 const formData = ref({
   email: '',
   householdId: '',
@@ -60,24 +33,25 @@ const availableHouseholds = ref([]);
 const householdsLoading = ref(false);
 const representativeId = ref(null);
 
-// Computed
 const dialogVisible = computed({
   get: () => props.visible,
-  set: (value) => emit('update:visible', value)
+  set: value => emit('update:visible', value)
 });
 
-const isFormValid = computed(() => {
-  return formData.value.email && 
-         formData.value.householdId && 
-         formData.value.description;
-});
+const dialogTitle = computed(() => t('representativeMembers.addMember.title'));
 
-const householdOptions = computed(() => {
-  return availableHouseholds.value.map(household => ({
+const isFormValid = computed(() =>
+  formData.value.email &&
+  formData.value.householdId &&
+  formData.value.description
+);
+
+const householdOptions = computed(() =>
+  availableHouseholds.value.map(household => ({
     label: household.name ? `${household.name} (${household.id})` : household.id,
     value: household.id
-  }));
-});
+  }))
+);
 
 async function loadHouseholds() {
   if (!representativeId.value) {
@@ -128,7 +102,7 @@ watch(() => props.householdId, (newId) => {
   }
 });
 
-watch(dialogVisible, async (isOpen) => {
+watch(dialogVisible, async isOpen => {
   if (isOpen) {
     await loadHouseholds();
   }
@@ -145,48 +119,31 @@ onMounted(async () => {
   await loadHouseholds();
 });
 
-/**
- * Validates the form data
- * @returns {Boolean} True if form is valid
- */
 function validateForm() {
   errors.value = {};
-  
-  // Email validation
+
   if (!formData.value.email.trim()) {
-    errors.value.email = 'El email es requerido';
+    errors.value.email = t('representativeMembers.addMember.validation.emailRequired');
   } else if (!isValidEmail(formData.value.email)) {
-    errors.value.email = 'El email no es válido';
+    errors.value.email = t('representativeMembers.addMember.validation.emailInvalid');
   }
-  
-  // Household ID validation
+
   if (!formData.value.householdId.trim()) {
-    errors.value.householdId = 'El ID del hogar es requerido';
+    errors.value.householdId = t('representativeMembers.addMember.validation.householdRequired');
   }
-  
-  // Description validation
+
   if (!formData.value.description.trim()) {
-    errors.value.description = 'La descripción es requerida';
+    errors.value.description = t('representativeMembers.addMember.validation.descriptionRequired');
   }
-  
+
   return Object.keys(errors.value).length === 0;
 }
 
-/**
- * Validates email format using regex
- * @param {String} email - Email to validate
- * @returns {Boolean} True if email is valid
- */
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-/**
- * Checks if email already exists in the system
- * @param {String} email - Email to check
- * @returns {Promise<Boolean>} True if email exists
- */
 async function checkEmailExists(email) {
   try {
     const response = await httpInstance.get(`/users?email=${email}`);
@@ -197,73 +154,55 @@ async function checkEmailExists(email) {
   }
 }
 
-/**
- * Handles form submission
- * Creates a new member invitation and sends it
- */
 async function handleSubmit() {
   if (!validateForm()) {
     return;
   }
-  
-  // Plan Free limit guard based on /households memberCount
+
   try {
     if (formData.value.householdId) {
-      // Fetch household to know its configured cap
       const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(formData.value.householdId)}`);
       const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
       const max = Number(hh?.memberCount || 0);
       if (Number.isFinite(max) && max > 0) {
-        // Count current members
         const usersRes = await httpInstance.get(`/users?householdId=${encodeURIComponent(formData.value.householdId)}&role=member`);
         const current = Array.isArray(usersRes.data) ? usersRes.data.length : 0;
         if (current >= max) {
           toast.add({
             severity: 'warn',
-            summary: 'Límite alcanzado',
-            detail: `Este hogar permite hasta ${max} miembros.`,
+            summary: t('representativeMembers.toasts.limit.summary'),
+            detail: t('representativeMembers.toasts.limit.detail', { count: max }),
             life: 3000
           });
           return;
         }
       }
     }
-  } catch (_) { /* ignore guard errors */ }
-  
-  // Check if email already exists
+  } catch (_) {
+    // guard errors are non-blocking
+  }
+
   const emailExists = await checkEmailExists(formData.value.email);
   if (emailExists) {
-    errors.value.email = 'Este email ya está registrado';
+    errors.value.email = t('representativeMembers.addMember.validation.emailExists');
     return;
   }
-  
+
   loading.value = true;
-  
+
   try {
-    // Create user invitation
-    const invitationData = {
-      email: formData.value.email.trim(),
-      householdId: formData.value.householdId.trim(),
-      description: formData.value.description.trim(),
-      status: 'invited',
-      role: 'member',
-      createdAt: new Date().toISOString()
-    };
-    
-    // For now, we'll create a user with invitation status
     const userData = {
-      name: formData.value.email.split('@')[0], // Use email prefix as name
+      name: formData.value.email.split('@')[0],
       email: formData.value.email.trim(),
-      password: '', // Invitations should not set a password
+      password: '',
       role: 'member',
       status: 'invited',
       householdId: formData.value.householdId.trim()
     };
-    
+
     const userResponse = await httpInstance.post('/users', userData);
     const newUser = userResponse.data;
-    
-    // Create household member relationship (use HM-<timestamp> id format)
+
     const nowIso = new Date().toISOString();
     const householdMemberData = {
       id: `HM-${Date.now()}`,
@@ -271,29 +210,28 @@ async function handleSubmit() {
       householdId: formData.value.householdId.trim(),
       joinedAt: nowIso,
       createdAt: nowIso,
-      updatedAt: nowIso
+      updatedAt: nowIso,
+      description: formData.value.description.trim()
     };
-    
+
     await httpInstance.post('/householdMember', householdMemberData);
-    
+
     toast.add({
       severity: 'success',
-      summary: 'Éxito',
-      detail: 'Invitación enviada correctamente',
+      summary: t('representativeMembers.addMember.toast.success.summary'),
+      detail: t('representativeMembers.addMember.toast.success.detail'),
       life: 3000
     });
-    
-    // Reset form and close dialog
+
     resetForm();
     emit('member-added');
     emit('update:visible', false);
-    
   } catch (error) {
     console.error('Error sending invitation:', error);
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo enviar la invitación',
+      summary: t('representativeMembers.addMember.toast.error.summary'),
+      detail: t('representativeMembers.addMember.toast.error.detail'),
       life: 3000
     });
   } finally {
@@ -301,9 +239,6 @@ async function handleSubmit() {
   }
 }
 
-/**
- * Resets the form to initial state
- */
 function resetForm() {
   formData.value = {
     email: '',
@@ -314,9 +249,6 @@ function resetForm() {
   syncHouseholdSelection(true);
 }
 
-/**
- * Handles cancel action
- */
 function handleCancel() {
   resetForm();
   emit('update:visible', false);
@@ -324,22 +256,21 @@ function handleCancel() {
 </script>
 
 <template>
-  <pv-dialog 
-    v-model:visible="dialogVisible" 
-    header="Añadir nuevo miembro al hogar"
-    :modal="true" 
+  <pv-dialog
+    v-model:visible="dialogVisible"
+    :header="dialogTitle"
+    :modal="true"
     :style="{ width: '50vw' }"
     :closable="!loading"
   >
     <div class="add-member-form">
-      <!-- Email Field -->
       <div class="field">
-        <label for="email" class="field-label">Correo del miembro:</label>
-        <pv-inputtext 
+        <label for="email" class="field-label">{{ t('representativeMembers.addMember.fields.email') }}</label>
+        <pv-inputtext
           id="email"
-          v-model="formData.email" 
+          v-model="formData.email"
           type="email"
-          placeholder="ejemplo@correo.com"
+          :placeholder="t('representativeMembers.addMember.placeholders.email')"
           class="form-input"
           :class="{ 'p-invalid': errors.email }"
           :disabled="loading"
@@ -347,36 +278,34 @@ function handleCancel() {
         <small v-if="errors.email" class="error-message">{{ errors.email }}</small>
       </div>
 
-      <!-- Household ID Field -->
       <div class="field">
-        <label for="householdId" class="field-label">Asignar ID de hogar:</label>
+        <label for="householdId" class="field-label">{{ t('representativeMembers.addMember.fields.household') }}</label>
         <pv-dropdown
           id="householdId"
           v-model="formData.householdId"
           :options="householdOptions"
           option-label="label"
           option-value="value"
-          placeholder="Selecciona un hogar"
+          :placeholder="t('representativeMembers.addMember.placeholders.household')"
           class="form-input"
           :class="{ 'p-invalid': errors.householdId }"
           :disabled="loading || !householdOptions.length"
           :loading="householdsLoading"
           filter
-          :empty-message="householdsLoading ? 'Cargando hogares...' : 'Sin hogares disponibles'"
+          :empty-message="householdsLoading ? t('representativeMembers.addMember.emptyLoading') : t('representativeMembers.addMember.emptyOptions')"
         />
         <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
-          Primero crea un hogar para poder invitar miembros.
+          {{ t('representativeMembers.addMember.helper.noHouseholds') }}
         </small>
         <small v-if="errors.householdId" class="error-message">{{ errors.householdId }}</small>
       </div>
 
-      <!-- Description Field -->
       <div class="field">
-        <label for="description" class="field-label">Descripción:</label>
-        <pv-textarea 
+        <label for="description" class="field-label">{{ t('representativeMembers.addMember.fields.description') }}</label>
+        <pv-textarea
           id="description"
-          v-model="formData.description" 
-          placeholder="Describe el propósito de la invitación..."
+          v-model="formData.description"
+          :placeholder="t('representativeMembers.addMember.placeholders.description')"
           class="form-textarea"
           :class="{ 'p-invalid': errors.description }"
           :disabled="loading"
@@ -388,16 +317,16 @@ function handleCancel() {
 
     <template #footer>
       <div class="flex justify-content-end gap-2">
-        <pv-button 
-          label="Cancelar" 
-          icon="pi pi-times" 
-          outlined 
+        <pv-button
+          :label="t('representativeMembers.addMember.buttons.cancel')"
+          icon="pi pi-times"
+          outlined
           @click="handleCancel"
           :disabled="loading"
         />
-        <pv-button 
-          label="Enviar invitación" 
-          icon="pi pi-send" 
+        <pv-button
+          :label="t('representativeMembers.addMember.buttons.submit')"
+          icon="pi pi-send"
           @click="handleSubmit"
           :disabled="!isFormValid || loading"
           :loading="loading"
@@ -408,13 +337,6 @@ function handleCancel() {
 </template>
 
 <style scoped>
-/**
- * Add Member Form Styles
- * 
- * Consistent styling with the project's glassmorphism theme
- * Light background with blue accent colors
- */
-
 .add-member-form {
   padding: 1rem 0;
 }
@@ -455,7 +377,6 @@ function handleCancel() {
   display: block;
 }
 
-/* PrimeVue overrides for consistent theme */
 :deep(.p-dialog) {
   background: #fff;
   color: #0f172a;
@@ -529,17 +450,16 @@ function handleCancel() {
   color: #3b82f6;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
   :deep(.p-dialog) {
     width: 95vw !important;
     margin: 1rem;
   }
-  
+
   :deep(.p-dialog-content) {
     padding: 1.5rem;
   }
-  
+
   :deep(.p-dialog-footer) {
     padding: 1rem;
   }
