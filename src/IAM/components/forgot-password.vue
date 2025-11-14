@@ -67,23 +67,23 @@ onBeforeUnmount(() => clearInterval(timerId));
 <template>
   <div class="grid h-screen">
     <!-- Left side (visual/brand) -->
-    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground">
+    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground" style="background-color: white !important;">
       <div class="p-5 text-center">
         <img
-            src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1200&auto=format&fit=crop"
+            src="@/assets/logo.jpeg"
             alt="forgot password hero"
             class="w-full border-round-2xl shadow-3"
             style="max-width: 560px;"
         />
-        <h2 class="mt-4 mb-2">Forgot your password?</h2>
-        <p class="text-600 line-height-3">
+        <h2 class="mt-4 mb-2" style="color: black !important;">Forgot your password?</h2>
+        <p class="text-600 line-height-3" style="color: black !important;">
           No worries—enter your email and we’ll send you a link to reset it securely.
         </p>
       </div>
     </div>
 
     <!-- Right side (form) -->
-    <div class="col-12 md:col-6 flex align-items-center justify-content-center">
+    <div class="col-12 md:col-6 flex align-items-center justify-content-center" style="background-color: #2c3e50 !important">
       <div class="w-full" style="max-width: 420px;">
         <div class="mb-4">
           <h1 class="m-0">Reset your password</h1>
@@ -115,9 +115,9 @@ onBeforeUnmount(() => clearInterval(timerId));
             @click="sendResetLink"
         />
 
-        <Divider align="center" type="dashed" class="my-4">
-          <b class="text-600">or</b>
-        </Divider>
+        <div class="custom-divider">
+          <span>or</span>
+        </div>
 
         <div class="flex align-items-center justify-content-between">
           <span class="text-600">Didn’t get the email?</span>
@@ -139,5 +139,32 @@ onBeforeUnmount(() => clearInterval(timerId));
 </template>
 
 <style scoped>
+.custom-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.custom-divider::before,
+.custom-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px dashed #ccc; /* customize color or style */
+}
+
+.custom-divider::before {
+  margin-right: 1rem;
+}
+
+.custom-divider::after {
+  margin-left: 1rem;
+}
+
+.custom-divider span {
+  font-weight: 600;
+  color: white;
+}
+
 :deep(img) { object-fit: cover; }
 </style>

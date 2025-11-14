@@ -1,4 +1,4 @@
-﻿import {createRouter, createWebHistory} from "vue-router";
+import { createRouter, createWebHistory } from 'vue-router';
 
 const LogInComponent = () => import('@/IAM/components/log-in.vue');
 const SignUpComponent = () => import('@/IAM/components/signup.vue');
@@ -14,163 +14,125 @@ const SettingsComponent = () => import('@/household-member/components/settings.c
 const DashboardHomeComponent = () => import('@/household-member/components/dashboard-home.component.vue');
 
 const routes = [
-    { path: '/', component: LogInComponent },
-    { path: '/login', name: 'login', component: LogInComponent, meta: { title: 'Login' } },
-    { path: '/signup', name: 'signup', component: SignUpComponent, meta: {title: 'SignUp' } },
-    { path: '/forgot-password', name: 'forgot-password' ,component: ForgotPasswordComponent , meta: { title: 'Forgot Password' } },
-    { 
-        path: '/dashboard/representative', 
-        name: 'representative-dashboard',
-        component: HomeRepresentativeComponent, 
-        meta: { 
-            requiresAuth: true,
-            role: 'representative',
-            title: 'Representative Dashboard'
-        },
-        children: [
-            {
-                path: '',
-                name: 'representative-dashboard-home',
-                component: () => import('@/household-representative/components/dashboard-home.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Inicio'
-                }
-            },
-            {
-                path: 'create-household',
-                name: 'create-household',
-                component: () => import('@/household-representative/components/create-household.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Crear Hogar'
-                }
-            },
-            {
-                path: 'members',
-                name: 'members-management',
-                component: () => import('@/household-representative/components/members.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Gestión de Miembros'
-                }
-            },
-            {
-                path: 'expenses',
-                name: 'expenses-management',
-                component: () => import('@/household-representative/components/expenses.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Gestión de Gastos'
-                }
-            },
-            {
-                path: 'contribution',
-                name: 'contribution-management',
-                component: () => import('@/household-representative/components/contribution.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Gestión de Aportes'
-                }
-            },
-            {
-                path: 'settings',
-                name: 'representative-settings',
-                component: () => import('@/household-representative/components/settings.component.vue'),
-                meta: {
-                    requiresAuth: true,
-                    role: 'representative',
-                    title: 'Configuración'
-                }
-            }
-        ]
-    },
-    { 
-        path: '/dashboard/member', 
-        name: 'member-dashboard',
-        component: HomeMemberComponent, 
-        meta: { 
-            requiresAuth: true,
-            role: 'member',
-            title: 'Member Dashboard'
-        },
-        children: [
-            {
-                path: '',
-                name: 'member-dashboard-home',
-                component: DashboardHomeComponent,
-                meta: {
-                    requiresAuth: true,
-                    role: 'member',
-                    title: 'Inicio'
-                }
-            },
-            {
-                path: 'contributions',
-                name: 'member-contributions',
-                component: ContributionsComponent,
-                meta: {
-                    requiresAuth: true,
-                    role: 'member',
-                    title: 'Mis Aportes'
-                }
-            },
-            {
-                path: 'household-status',
-                name: 'household-status',
-                component: HouseholdStatusComponent,
-                meta: {
-                    requiresAuth: true,
-                    role: 'member',
-                    title: 'Estado del Hogar'
-                }
-            },
-            {
-                path: 'search',
-                name: 'search-household',
-                component: SearchHouseholdComponent,
-                meta: {
-                    requiresAuth: true,
-                    role: 'member',
-                    title: 'Buscar Hogar'
-                }
-            },
-            {
-                path: 'settings',
-                name: 'member-settings',
-                component: SettingsComponent,
-                meta: {
-                    requiresAuth: true,
-                    role: 'member',
-                    title: 'Configuración'
-                }
-            }
-        ]
-    }
-]
+  { path: '/', component: LogInComponent },
+  { path: '/login', name: 'login', component: LogInComponent, meta: { title: 'Login' } },
+  { path: '/signup', name: 'signup', component: SignUpComponent, meta: { title: 'SignUp' } },
+  { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordComponent, meta: { title: 'Forgot Password' } },
+  {
+    path: '/dashboard/representative',
+    name: 'representative-dashboard',
+    component: HomeRepresentativeComponent,
+    redirect: { name: 'representative-dashboard-home' },
+    meta: { requiresAuth: true, role: 'representative', title: 'Representative Dashboard' },
+    children: [
+      {
+        path: '',
+        name: 'representative-dashboard-home',
+        component: () => import('@/household-representative/components/dashboard-home.component.vue'),
+        meta: { title: 'Inicio' }
+      },
+      {
+        path: 'household/:id',
+        name: 'household-edit',
+        component: () => import('@/households/presentation/views/create-household.page.vue'),
+        props: true,
+        meta: { requiresAuth: true, role: 'representative', title: 'Editar Hogar' }
+      },
+      {
+        path: 'households',
+        name: 'household-list',
+        component: () => import('@/households/presentation/components/household-list.component.vue'),
+        meta: { title: 'Hogares' }
+      },
+      {
+        path: 'members',
+        name: 'members-management',
+        component: () => import('@/household-representative/components/members.component.vue'),
+        meta: { title: 'Gestión de Miembros' }
+      },
+      {
+        path: 'expenses',
+        name: 'expenses-management',
+        component: () => import('@/household-representative/components/expenses.component.vue'),
+        meta: { title: 'Gestión de Gastos' }
+      },
+      {
+        path: 'contribution/:householdId?',
+        name: 'contribution-management',
+        component: () => import('@/household-representative/components/contribution.component.vue'),
+        props: true,
+        meta: { title: 'Gestión de Aportes' }
+      },
+      {
+        path: 'settings',
+        name: 'representative-settings',
+        component: () => import('@/household-representative/components/settings.component.vue'),
+        meta: { title: 'Configuración' }
+      },
+      {
+        path: 'profile',
+        name: 'representative-profile',
+        component: () => import('@/profiles/presentation/views/profile.page.vue'),
+        meta: { title: 'Perfil' }
+      }
+    ]
+  },
+  {
+    path: '/dashboard/member',
+    name: 'member-dashboard',
+    component: HomeMemberComponent,
+    redirect: { name: 'member-dashboard-home' },
+    meta: { requiresAuth: true, role: 'member', title: 'Member Dashboard' },
+    children: [
+      {
+        path: '',
+        name: 'member-dashboard-home',
+        component: DashboardHomeComponent,
+        meta: { requiresAuth: true, role: 'member', title: 'Inicio' }
+      },
+      {
+        path: 'contributions',
+        name: 'member-contributions',
+        component: ContributionsComponent,
+        meta: { requiresAuth: true, role: 'member', title: 'Mis Aportes' }
+      },
+      {
+        path: 'household-status',
+        name: 'household-status',
+        component: HouseholdStatusComponent,
+        meta: { requiresAuth: true, role: 'member', title: 'Estado del Hogar' }
+      },
+      {
+        path: 'search',
+        name: 'search-household',
+        component: SearchHouseholdComponent,
+        meta: { requiresAuth: true, role: 'member', title: 'Buscar Hogar' }
+      },
+      {
+        path: 'settings',
+        name: 'member-settings',
+        component: SettingsComponent,
+        meta: { requiresAuth: true, role: 'member', title: 'Configuración' }
+      }
+    ]
+  }
+];
 
 const router = createRouter({
-    history: createWebHistory(),
-    routes: routes,
+  history: createWebHistory(),
+  routes
 });
 
 router.beforeEach((to, from, next) => {
-    const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
-    
-    if (to.meta.requiresAuth && !user) {
-        next({ name: 'login' });
-    } else if (to.meta.requiresAuth && to.meta.role !== user.role) {
-        next({ name: user.role === 'representative' ? 'representative-dashboard' : 'member-dashboard' });
-    } else {
-        next();
-    }
+  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+  if (to.meta.requiresAuth && !user) {
+    next({ name: 'login' });
+  } else if (to.meta.requiresAuth && to.meta.role !== user?.role) {
+    next({ name: user?.role === 'representative' ? 'representative-dashboard' : 'member-dashboard' });
+  } else {
+    next();
+  }
 });
 
 export default router;
-
-

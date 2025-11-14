@@ -24,21 +24,32 @@ async function signIn() {
     return;
   }
 
-  console.log("email", email.value);
+  // Normalize inputs
+  const normalizedEmail = String(email.value).trim().toLowerCase();
+  const normalizedPassword = String(password.value);
 
   try {
-    // Find user by email
-    const response = await httpInstance.get(`/users?email=${email.value}`);
-    const users = response.data;
+    // Find user by email (case-insensitive) and trim
+    const response = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
+    const all = (response.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
+    // Prefer ACTIVE users; if multiple, pick the latest by id
+    const actives = all.filter(u => String(u.status || '').toLowerCase() === 'active');
+    const users = actives.length > 0 ? actives : all;
 
     if (users.length === 0) {
       error.value = 'Invalid email or password.';
       return;
     }
 
-    const user = users[0];
-    if (user.password !== password.value) {
+    const user = users.sort((a,b) => Number(b.id||0) - Number(a.id||0))[0];
+    if (user.password !== normalizedPassword) {
       error.value = 'Invalid email or password.';
+      return;
+    }
+
+    // Optional: block invited users from signing in until they activate
+    if (user.status && String(user.status).toLowerCase() === 'invited') {
+      error.value = 'Please activate your account from the invitation before signing in.';
       return;
     }
 
@@ -48,10 +59,20 @@ async function signIn() {
       name: user.name,
       email: user.email,
       role: user.role,
-      householdId: user.householdId
+      householdId: user.householdId,
+      isNewUser: user.isNewUser,
+      plan: user.plan || 'FREE'
     };
     
     localStorage.setItem('user', JSON.stringify(userData));
+
+    // Check if this is a new user
+    if (user.role === 'representative' && user.isNewUser) {
+      localStorage.setItem('isNewUser', 'true');
+      
+      // Update user to no longer be new
+      await httpInstance.patch(`/users/${user.id}`, { isNewUser: false });
+    }
 
     // Redirect based on role
     if (user.role === 'representative') {
@@ -69,26 +90,26 @@ async function signIn() {
 
 <template>
   <!-- Full height split layout -->
-  <div class="grid h-screen">
+  <div class="grid h-screen" style="background-color: white !important;">
     <!-- Left side (image / brand) -->
-    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground">
+    <div class="hidden md:col-6 md:flex align-items-center justify-content-center surface-ground" style="background-color: white !important;">
       <div class="p-5 text-center">
         <!-- Replace with your own image -->
         <img
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1200&auto=format&fit=crop"
+            src="@/assets/logo.jpeg"
             alt="auth hero"
             class="w-full border-round-2xl shadow-3"
             style="max-width: 560px;"
         />
-        <h2 class="mt-4 mb-2">Welcome back</h2>
-        <p class="text-600 line-height-3">
+        <h2 class="mt-4 mb-2" style="color: black">Welcome back</h2>
+        <p class="text-600 line-height-3" style="color: black !important;">
           Sign in to continue to your dashboard and pick up where you left off.
         </p>
       </div>
     </div>
 
     <!-- Right side (form) -->
-    <div class="col-12 md:col-6 flex align-items-center justify-content-center">
+    <div class="col-12 md:col-6 flex align-items-center justify-content-center" style="background-color: #2c3e50">
       <div class="w-full" style="max-width: 420px;">
         <div class="mb-4">
           <h1 class="m-0">Sign in</h1>
@@ -138,9 +159,10 @@ async function signIn() {
 
         <Button label="Sign in" class="w-full" @click="signIn" />
 
-        <Divider align="center" type="dashed" class="my-4">
-          <b class="text-600">or</b>
-        </Divider>
+        <div class="custom-divider">
+          <span>or</span>
+        </div>
+
 
         <div class="grid">
           <div class="col-12 md:col-6">
@@ -165,6 +187,32 @@ async function signIn() {
 </template>
 
 <style scoped>
+.custom-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.custom-divider::before,
+.custom-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px dashed #ccc; /* customize color or style */
+}
+
+.custom-divider::before {
+  margin-right: 1rem;
+}
+
+.custom-divider::after {
+  margin-left: 1rem;
+}
+
+.custom-divider span {
+  font-weight: 600;
+  color: white;
+}
 /* Optional: slightly softer card look on the image side */
 :deep(img) {
   object-fit: cover;
