@@ -160,7 +160,8 @@
       "householdId": "HOG-1763005858611",
       "id": 1763005858612,
       "plan": "PREMIUM",
-      "isNewUser": false
+      "isNewUser": false,
+      "income": 160
     },
     {
       "name": "Erick Quispe",
@@ -622,7 +623,8 @@
       "householdId": "HOG-1763005858611",
       "joinedAt": "2025-11-13T03:51:59.194Z",
       "createdAt": "2025-11-13T03:51:59.194Z",
-      "updatedAt": "2025-11-13T03:51:59.194Z"
+      "updatedAt": "2025-11-14T08:49:36.090Z",
+      "income": "1900.00"
     },
     {
       "id": "HM-1763005940415",
@@ -920,6 +922,16 @@
       "payedAt": null,
       "createdAt": "2025-11-13T04:05:11.961Z",
       "updatedAt": "2025-11-13T04:05:15.079Z"
+    },
+    {
+      "id": "MC-1763110776007",
+      "contributionId": "CN-1763006706131",
+      "memberId": "HM-1763005919194",
+      "amount": "624.29",
+      "status": 1,
+      "payedAt": "2025-11-14T08:59:36.007Z",
+      "createdAt": "2025-11-14T08:59:36.007Z",
+      "updatedAt": "2025-11-14T08:59:36.007Z"
     }
   ],
   "userIncome": [
