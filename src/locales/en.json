@@ -361,7 +361,7 @@
         "description": "Description"
       },
       "placeholders": {
-        "email": "example@email.com",
+        "email": "Enter a valid email",
         "household": "Select a household",
         "description": "Describe the purpose of the invitation..."
       },

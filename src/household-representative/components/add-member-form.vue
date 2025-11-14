@@ -111,6 +111,7 @@ watch(dialogVisible, async isOpen => {
 onMounted(async () => {
   try {
     const storedUser = localStorage.getItem('user');
+    console.log('Current User: ', storedUser);
     representativeId.value = storedUser ? JSON.parse(storedUser)?.id ?? null : null;
   } catch (error) {
     representativeId.value = null;
