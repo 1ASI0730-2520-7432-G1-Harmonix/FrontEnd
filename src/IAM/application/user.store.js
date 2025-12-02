@@ -18,6 +18,18 @@ export const useUserStore = defineStore('user', () => {
     const normalizeError = (err) =>
         err?.response?.data?.message ?? err?.message ?? String(err)
 
+
+    async function signInUser(email, password) {
+        errors.value = []
+        loading.value = true
+        try {
+
+
+        }catch (err){
+
+        }
+    }
+
     // actions
     async function loadUserById(id) {
         errors.value = []

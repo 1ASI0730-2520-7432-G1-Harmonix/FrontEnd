@@ -1,10 +1,19 @@
 ﻿import httpInstance from "@/shared/services/http.instance.js";
 
 const resourceEndpoint = import.meta.env.VITE_USERS_ENDPOINT_PATH;
+
+const authenticationEndpoint = import.meta.env.VITE_AUTHENTICATION_ENDPOINT_PATH;
+
 export const UserApi={
     async create(dto) {
-        const res = await httpInstance.post(`${resourceEndpoint}`, dto);
+        const res = await httpInstance.post(`${authenticationEndpoint}/sing-up`, dto);
         return res.data;
+    },
+
+    async signIn(userData){
+        const { data } = await httpInstance.post(`${authenticationEndpoint}/sign-in`, userData);
+        const arr = data;
+        return Array.isArray(arr) ? arr[0] : arr;
     },
 
     async getById(id) {

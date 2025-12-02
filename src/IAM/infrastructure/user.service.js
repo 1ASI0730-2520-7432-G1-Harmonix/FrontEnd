@@ -6,11 +6,19 @@ import {HouseholdApi} from "@/households/infrastructure/household-api.js";
 export class UserService {
     static async createUser(userData) {
         const user = new User(userData);
-        const errors = userData.validate;
+        const errors = user.validate();
         if(!errors) throw errors;
 
-        const created = await UserApi.create(toDTO(userData));
+        const created = await UserApi.create(toDTO(user));
         return toEntity(created);
+    }
+
+    static async signInUser(userData) {
+        if(!userData) throw new Error("LogIn Data doesn't exist");
+
+        try {
+            const dto = await UserApi.signInUser(userData);
+        }
     }
 
     static async getUserById(id) {
