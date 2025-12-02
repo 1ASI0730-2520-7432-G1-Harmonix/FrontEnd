@@ -147,8 +147,8 @@ function isValidEmail(email) {
 
 async function checkEmailExists(email) {
   try {
-    const response = await httpInstance.get(`/users?email=${email}`);
-    return response.data.length > 0;
+    const response = await httpInstance.get(`/user/email/${encodeURIComponent(email)}`);
+    return !!response.data;
   } catch (error) {
     console.error('Error checking email:', error);
     return false;
@@ -162,12 +162,12 @@ async function handleSubmit() {
 
   try {
     if (formData.value.householdId) {
-      const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(formData.value.householdId)}`);
-      const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
+      const hhRes = await httpInstance.get(`/house_hold/${encodeURIComponent(formData.value.householdId)}`);
+      const hh = hhRes.data;
       const max = Number(hh?.memberCount || 0);
       if (Number.isFinite(max) && max > 0) {
-        const usersRes = await httpInstance.get(`/users?householdId=${encodeURIComponent(formData.value.householdId)}&role=member`);
-        const current = Array.isArray(usersRes.data) ? usersRes.data.length : 0;
+        const membersRes = await httpInstance.get(`/household_member/household/${encodeURIComponent(formData.value.householdId)}`);
+        const current = Array.isArray(membersRes.data) ? membersRes.data.length : 0;
         if (current >= max) {
           toast.add({
             severity: 'warn',
@@ -192,30 +192,13 @@ async function handleSubmit() {
   loading.value = true;
 
   try {
-    const userData = {
-      name: formData.value.email.split('@')[0],
-      email: formData.value.email.trim(),
-      password: '',
-      role: 'member',
-      status: 'invited',
-      householdId: formData.value.householdId.trim()
-    };
-
-    const userResponse = await httpInstance.post('/users', userData);
-    const newUser = userResponse.data;
-
-    const nowIso = new Date().toISOString();
-    const householdMemberData = {
-      id: `HM-${Date.now()}`,
-      userId: newUser.id,
+    const payload = {
       householdId: formData.value.householdId.trim(),
-      joinedAt: nowIso,
-      createdAt: nowIso,
-      updatedAt: nowIso,
+      email: formData.value.email.trim(),
       description: formData.value.description.trim()
     };
 
-    await httpInstance.post('/householdMember', householdMemberData);
+    await httpInstance.post('/household_member', payload);
 
     toast.add({
       severity: 'success',

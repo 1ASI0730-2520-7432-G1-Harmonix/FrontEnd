@@ -1,13 +1,12 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import httpInstance from '@/shared/services/http.instance';
+import httpInstance, { AUTH_TOKEN_KEY } from '@/shared/services/http.instance';
 
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
-import Divider from 'primevue/divider';
 import Message from 'primevue/message';
 import RadioButton from 'primevue/radiobutton';
 import Dialog from 'primevue/dialog';
@@ -18,161 +17,116 @@ const email = ref('');
 const password = ref('');
 const confirm = ref('');
 const accept = ref(false);
-const userType = ref('representative');
+const userType = ref('Representative'); // Representative | Member
+const selectedPlan = ref('FREE'); // FREE | PREMIUM
+const showPlanDialog = ref(false);
 const householdId = ref('');
 
 const error = ref('');
 const success = ref('');
-const generatedHouseholdId = ref('');
+const isSubmitting = ref(false);
 
-// Plan selection modal (representatives only)
-const planDialogVisible = ref(false);
-const selectedPlan = ref('FREE'); // FREE | PREMIUM (only for representatives)
+async function fetchUserProfile(id) {
+  const res = await httpInstance.get(`/user/user/${id}`);
+  return res.data;
+}
 
 function validateEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-async function validateHouseholdId(id) {
-  try {
-    const response = await httpInstance.get(`/households?id=${id}`);
-    return response.data.length > 0;
-  } catch (err) {
-    return false;
-  }
+function mapRole(rawRole) {
+  return rawRole === 'Member' ? 'Member' : 'Representative';
+}
+
+// FREE -> 0, PREMIUM -> 1 (requested mapping)
+function getPlanCode(planLabel) {
+  return planLabel === 'PREMIUM' ? 1 : 0;
 }
 
 async function signUp() {
+  if (isSubmitting.value) return;
+
   error.value = '';
   success.value = '';
-  generatedHouseholdId.value = '';
 
   if (!name.value.trim()) return (error.value = 'Please enter your name.');
   if (!validateEmail(email.value)) return (error.value = 'Enter a valid email address.');
   if (password.value.length < 8) return (error.value = 'Password must be at least 8 characters.');
   if (password.value !== confirm.value) return (error.value = 'Passwords do not match.');
-
-  if (userType.value === 'representative' && !accept.value) {
+  if (userType.value === 'Representative' && !accept.value) {
     return (error.value = 'You must accept the Terms & Privacy Policy.');
   }
 
-  if (userType.value === 'member') {
-    if (!householdId.value) {
-      return (error.value = 'Please enter the Household ID.');
-    }
-    const isValid = await validateHouseholdId(householdId.value);
-    if (!isValid) return (error.value = 'Invalid Household ID. Please verify and try again.');
+  // Representatives must choose a plan before the actual sign-up/sign-in
+  if (userType.value === 'Representative') {
+    showPlanDialog.value = true;
+    return;
   }
 
-  // Representatives choose a plan; members inherit the representative's plan automatically
-  if (userType.value === 'representative') {
-    planDialogVisible.value = true;
-  } else {
-    await confirmPlanAndCreate();
-  }
-}
-
-async function resolvePlanForUserType() {
-  // Members inherit the representative's plan
-  if (userType.value === 'member') {
-    try {
-      // Find household and representative
-      const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(householdId.value)}`);
-      const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
-      if (hh?.representativeId) {
-        const repRes = await httpInstance.get(`/users?id=${encodeURIComponent(hh.representativeId)}`);
-        const rep = Array.isArray(repRes.data) ? repRes.data[0] : repRes.data;
-        return rep?.plan || 'FREE';
-      }
-    } catch (_) { /* fallback below */ }
-    return 'FREE';
-  }
-  // Representatives use the selected plan
-  return selectedPlan.value;
+  await confirmPlanAndCreate();
 }
 
 async function confirmPlanAndCreate() {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
   try {
-    const planToApply = await resolvePlanForUserType();
     const normalizedEmail = String(email.value).trim().toLowerCase();
-    // If an invited user already exists with this email, upgrade it instead of creating a duplicate
-    const existingRes = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
-    const existingUsers = (existingRes.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
+    const normalizedPassword = String(password.value);
+    const role = mapRole(userType.value);
+    const planLabel = selectedPlan.value || 'FREE';
+    const planCode = getPlanCode(planLabel);
 
-    const userId = Date.now();
-    let userData = {
-      id: userId,
-      name: name.value,
+    // 1) Sign-up (backend ignores unknown fields; plan sent for compatibility)
+    await httpInstance.post('/authentication/sign-up', {
       email: normalizedEmail,
-      password: password.value,
-      role: userType.value,
-      status: 'active',
-      plan: planToApply
-    };
+      password: normalizedPassword,
+      name: name.value,
+      role,
+      plan: planCode
+    });
 
-    if (userType.value === 'representative') {
-      const newHouseholdId = `HOG-${userId}`;
-      userData.householdId = newHouseholdId;
-      userData.isNewUser = true;
+    // 2) Sign-in to obtain JWT
+    const signInResponse = await httpInstance.post('/authentication/sign-in', {
+      email: normalizedEmail,
+      password: normalizedPassword
+    });
 
-      await httpInstance.post('/households', {
-        id: newHouseholdId,
-        name: '',
-        description: '',
-        memberCount: 1,
-        startDate: new Date().toISOString(),
-        currency: 'USD',
-        representativeId: userId,
-        createdAt: new Date().toISOString()
-      });
+    const { token, id } = signInResponse.data || {};
+    if (!token) throw new Error('Token was not returned after sign-in.');
 
-      generatedHouseholdId.value = newHouseholdId;
+    const roleLower = role.toLowerCase();
+
+    // Persist token before fetching profile so the interceptor adds Authorization
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+
+    // Fetch full profile to capture householdId and isNewUser
+    const profile = await fetchUserProfile(id);
+
+    localStorage.setItem('user', JSON.stringify({
+      id,
+      email: normalizedEmail,
+      role: roleLower,
+      plan: planLabel,
+      planCode,
+      householdId: profile?.houseHoldId || '',
+      isNewUser: profile?.isNewUser?.toLowerCase?.() === 'true'
+    }));
+
+    if (profile?.isNewUser?.toLowerCase?.() === 'true') {
+      localStorage.setItem('isNewUser', 'true');
     } else {
-      userData.householdId = householdId.value;
-      userData.isNewUser = false;
+      localStorage.removeItem('isNewUser');
     }
 
-    // Upgrade invited user if present
-    if (existingUsers.length > 0) {
-      const invited = existingUsers.find(u => String(u.status || '').toLowerCase() === 'invited');
-      if (invited) {
-        const patchData = {
-          name: userData.name,
-          password: userData.password,
-          role: 'member',
-          status: 'active',
-          plan: userData.plan,
-          householdId: userData.householdId,
-          isNewUser: false
-        };
-        const response = await httpInstance.patch(`/users/${invited.id}`, patchData);
-        if (response.status === 200) {
-          planDialogVisible.value = false;
-          success.value = 'Account activated from invitation! You can sign in now.';
-          setTimeout(() => router.push('/login'), 2500);
-          return;
-        }
-      } else {
-        // An active user already exists with this email
-        planDialogVisible.value = false;
-        error.value = 'This email is already registered. Please sign in.';
-        return;
-      }
-    }
-
-    const response = await httpInstance.post('/users', userData);
-    if (response.status === 201) {
-      planDialogVisible.value = false;
-      if (userType.value === 'representative') {
-        success.value = `Account created! Your Household ID is: ${generatedHouseholdId.value}. Save it to share with your household members.`;
-      } else {
-        success.value = 'Account created! You have been added to the household.';
-      }
-      setTimeout(() => router.push('/login'), 3500);
-    }
+    success.value = 'Account created successfully. Redirecting to login...';
+    setTimeout(() => router.push('/login'), 1500);
   } catch (err) {
-    planDialogVisible.value = false;
-    error.value = err.response?.data?.message || 'Failed to create account. Please try again.';
+    const message = err.response?.data?.message || err.message || 'Failed to create account. Please try again.';
+    error.value = message;
+  } finally {
+    isSubmitting.value = false;
+    showPlanDialog.value = false;
   }
 }
 </script>
@@ -209,11 +163,11 @@ async function confirmPlanAndCreate() {
           <label class="block mb-2">Account Type</label>
           <div class="flex gap-4">
             <div class="flex align-items-center">
-              <RadioButton id="representative" v-model="userType" value="representative" name="userType" />
+              <RadioButton id="representative" v-model="userType" value="Representative" name="userType" />
               <label for="representative" class="ml-2">Household Representative</label>
             </div>
             <div class="flex align-items-center">
-              <RadioButton id="member" v-model="userType" value="member" name="userType" />
+              <RadioButton id="member" v-model="userType" value="Member" name="userType" />
               <label for="member" class="ml-2">Household Member</label>
             </div>
           </div>
@@ -263,27 +217,26 @@ async function confirmPlanAndCreate() {
           />
         </div>
 
-        <div v-if="userType === 'member'" class="field mb-3">
-          <label for="householdId" class="block mb-2">Household ID</label>
+        <div v-if="userType === 'Member'" class="field mb-3">
+          <label for="householdId" class="block mb-2">Household ID (optional for now)</label>
           <span class="p-input-icon-left w-full">
             <i class="pi pi-home" />
-            <InputText id="householdId" v-model="householdId" placeholder="Enter the ID provided by your household representative" class="w-full" />
+            <InputText id="householdId" v-model="householdId" placeholder="Provided by your representative" class="w-full" />
           </span>
         </div>
 
-        <div v-if="userType === 'representative'" class="flex align-items-start gap-2 my-3">
+        <div v-if="userType === 'Representative'" class="flex align-items-start gap-2 my-3">
           <Checkbox inputId="accept" v-model="accept" :binary="true" />
           <label for="accept" class="line-height-3">
             I agree to the <a href="#" class="text-primary">Terms</a> and <a href="#" class="text-primary">Privacy Policy</a>.
           </label>
         </div>
 
-        <Button label="Create account" class="w-full" @click="signUp" />
+        <Button :disabled="isSubmitting" label="Create account" class="w-full" @click="signUp" />
 
         <div class="custom-divider">
           <span>or</span>
         </div>
-
 
         <Button class="w-full mb-2" outlined>
           <i class="pi pi-google mr-2" /> Continue with Google
@@ -300,18 +253,18 @@ async function confirmPlanAndCreate() {
     </div>
 
     <!-- Plan selection dialog -->
-    <Dialog v-model:visible="planDialogVisible" modal :style="{ width: '34rem' }" header="Choose your plan">
+    <Dialog v-model:visible="showPlanDialog" modal :style="{ width: '34rem' }" header="Choose your plan">
       <div class="flex flex-column gap-3">
         <div class="flex align-items-center gap-3">
           <RadioButton inputId="plan-free" value="FREE" v-model="selectedPlan" />
-          <label for="plan-free">Free — 1 household, up to 3 members</label>
+          <label for="plan-free">Free - 1 household, up to 3 members</label>
         </div>
         <div class="flex align-items-center gap-3">
           <RadioButton inputId="plan-premium" value="PREMIUM" v-model="selectedPlan" />
-          <label for="plan-premium">Premium — unlimited households and members</label>
+          <label for="plan-premium">Premium - unlimited households and members</label>
         </div>
         <div class="flex justify-content-end gap-2 mt-3">
-          <Button label="Cancel" class="p-button-outlined" @click="planDialogVisible = false" />
+          <Button label="Cancel" class="p-button-outlined" @click="showPlanDialog = false" />
           <Button label="Continue" @click="confirmPlanAndCreate" />
         </div>
       </div>
@@ -349,4 +302,3 @@ async function confirmPlanAndCreate() {
 
 :deep(img) { object-fit: cover; }
 </style>
-

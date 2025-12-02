@@ -124,12 +124,14 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+  const stored = localStorage.getItem('user');
+  const user = stored ? JSON.parse(stored) : null;
+  const role = user?.role || 'representative';
 
   if (to.meta.requiresAuth && !user) {
     next({ name: 'login' });
-  } else if (to.meta.requiresAuth && to.meta.role !== user?.role) {
-    next({ name: user?.role === 'representative' ? 'representative-dashboard' : 'member-dashboard' });
+  } else if (to.meta.requiresAuth && to.meta.role && to.meta.role !== role) {
+    next({ name: role === 'member' ? 'member-dashboard' : 'representative-dashboard' });
   } else {
     next();
   }

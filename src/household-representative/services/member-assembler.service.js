@@ -6,31 +6,15 @@
 import httpInstance from '@/shared/services/http.instance';
 
 class MemberDataFetcher {
-  async fetchUsers(householdId) {
-    return await httpInstance.get(`/users?householdId=${householdId}`);
-  }
-  
-  async fetchContributions() {
-    return await httpInstance.get('/memberContributions');
-  }
-  
   async fetchHouseholdMembers(householdId) {
-    return await httpInstance.get(`/householdMember?householdId=${householdId}`);
+    return await httpInstance.get(`/household_member/household/${householdId}`);
   }
 }
 
 class MemberDataProcessor {
-  calculateTotalContributions(memberId, contributions) {
-    return contributions
-      .filter(c => c.memberId === memberId)
-      .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-  }
-  
-  mapUserToMember(user, householdMember, totalContributed) {
+  mapMember(member) {
     return {
-      ...user,
-      householdMemberId: householdMember?.id,
-      totalContributed: totalContributed.toFixed(2)
+      ...member
     };
   }
 }
@@ -55,26 +39,10 @@ class MemberAssembler {
     const userData = JSON.parse(localStorage.getItem('user'));
     this.validator.validateHouseholdData(userData);
 
-    const [usersResponse, contributionsResponse, householdMembersResponse] = await Promise.all([
-      this.fetcher.fetchUsers(userData.householdId),
-      this.fetcher.fetchContributions(),
-      this.fetcher.fetchHouseholdMembers(userData.householdId)
-    ]);
+    const householdMembersResponse = await this.fetcher.fetchHouseholdMembers(userData.householdId);
+    const householdMembers = householdMembersResponse.data || [];
 
-    const users = usersResponse.data;
-    const allContributions = contributionsResponse.data;
-    const householdMembers = householdMembersResponse.data;
-    const memberUsers = users.filter(user => user.role === 'member');
-    
-    return memberUsers.map(user => {
-      const householdMember = householdMembers.find(hm => hm.userId === user.id);
-      const totalContributed = this.processor.calculateTotalContributions(
-        householdMember?.id, 
-        allContributions
-      );
-      
-      return this.processor.mapUserToMember(user, householdMember, totalContributed);
-    });
+    return householdMembers.map(member => this.processor.mapMember(member));
   }
 }
 

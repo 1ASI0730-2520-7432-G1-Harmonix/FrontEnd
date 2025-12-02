@@ -1,10 +1,11 @@
 <script setup>
-import {ref, onMounted, computed} from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import httpInstance from '@/shared/services/http.instance';
 import Button from 'primevue/button';
 import HouseholdModal from '@/households/presentation/components/household-modal.component.vue';
-import {useI18n} from "vue-i18n";
+import { useI18n } from 'vue-i18n';
+import { HouseholdApi } from '@/households/infrastructure/household-api';
 
 const router = useRouter();
 const user = ref(null);
@@ -12,7 +13,7 @@ const members = ref([]);
 const sidebarCollapsed = ref(false);
 const showHouseholdModal = ref(false);
 
-const {t} = useI18n();
+const { t } = useI18n();
 const menuItems = computed(() => [
   { label: t('sidebar.dashboard'), icon: 'pi pi-th-large', route: '/dashboard/representative' },
   { label: t('sidebar.households'), icon: 'pi pi-home', route: '/dashboard/representative/households' },
@@ -32,21 +33,51 @@ onMounted(async () => {
   const userData = localStorage.getItem('user');
   if (userData) {
     user.value = JSON.parse(userData);
-    await loadHouseholdMembers();
-    
-    // Mostrar el modal si es un usuario recién registrado
     const isNewUser = localStorage.getItem('isNewUser');
-    console.log('isNewUser:', isNewUser); // Para debugging
     if (isNewUser === 'true') {
-      showHouseholdModal.value = true;
-      // No removemos isNewUser hasta que el usuario tome una acción en el modal
+      showHouseholdModal.value = true; // mostrar siempre si es nuevo
+    } else {
+      await ensureHouseholdForRepresentative();
+      await loadHouseholdMembers();
     }
   }
 });
 
+async function ensureHouseholdForRepresentative() {
+  if (!user.value || user.value.role !== 'representative') return;
+
+  const payload = {
+    id: user.value.householdId || null,
+    name: 'New Household',
+    description: '',
+    memberCount: 1,
+    representativeId: user.value.id,
+    currency: 'USD'
+  };
+
+  // If we already have an id, verify it exists; otherwise create a new one and replace it
+  if (user.value.householdId) {
+    try {
+      const existing = await HouseholdApi.getById(user.value.householdId);
+      if (existing?.id) {
+        localStorage.setItem('householdId', existing.id);
+        return; // OK, it exists
+      }
+    } catch (_) {
+      // If 404, fall through and create a new one
+    }
+  }
+
+  const created = await HouseholdApi.create(payload);
+  user.value.householdId = created?.id || '';
+  localStorage.setItem('user', JSON.stringify(user.value));
+  if (user.value.householdId) localStorage.setItem('householdId', user.value.householdId);
+}
+
 async function loadHouseholdMembers() {
+  if (!user.value?.householdId) return;
   try {
-    const response = await httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`);
+    const response = await httpInstance.get(`/household_member/household/${user.value.householdId}`);
     members.value = response.data;
   } catch (error) {
     console.error('Error loading household members:', error);
@@ -63,6 +94,7 @@ function navigateTo(route) {
 
 function logout() {
   localStorage.removeItem('user');
+  localStorage.removeItem('isNewUser');
   router.push('/login');
 }
 
@@ -142,9 +174,9 @@ async function removeMember(memberId) {
     </main>
 
     <HouseholdModal
-      v-if="user?.householdId"
+      v-if="showHouseholdModal"
       :visible="showHouseholdModal"
-      :householdId="user.householdId"
+      :householdId="user?.householdId || ''"
       @update:visible="showHouseholdModal = $event"
     />
   </div>
@@ -215,7 +247,7 @@ async function removeMember(memberId) {
 }
 .menu li .pill:hover { background: rgba(255,255,255,0.14); transform: translateY(-1px); }
 .menu li.active .pill {
-  /* Brand gradient based on HarMoniX palette (blue → orange) */
+  /* Brand gradient based on HarMoniX palette (blue 👉 orange) */
   background: #001b2e;
   color:#f3f3f3;
   box-shadow: 0 8px 20px rgba(166, 195, 250, 0.25);

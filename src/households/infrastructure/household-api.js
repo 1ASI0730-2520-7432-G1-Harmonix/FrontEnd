@@ -3,28 +3,26 @@ import http from '@/shared/services/http.instance';
 export const HouseholdApi = {
 
   async create(dto) {
-    const res = await http.post('/households', dto);
+    const res = await http.post('/house_hold', dto);
     return res.data;
   },
 
   async listByRepresentative(representativeId) {
-    const res = await http.get(`/households?representativeId=${representativeId}`);
+    const res = await http.get(`/house_hold/representative/${representativeId}`);
     return res.data;
   },
 
   async getById(id) {
-    const res = await http.get(`/households?id=${id}`);
-    const arr = res.data || [];
-    return Array.isArray(arr) ? arr[0] : arr;
+    const res = await http.get(`/house_hold/${id}`);
+    return res.data;
   },
 
   async update(id, dto) {
-    const res = await http.put(`/households/${id}`, dto);
+    const res = await http.put(`/house_hold/${id}`, dto);
     return res.data;
   },
 
   async remove(id) {
-    await http.delete(`/households/${id}`);
+    await http.delete(`/house_hold/${id}`);
   }
 };
-

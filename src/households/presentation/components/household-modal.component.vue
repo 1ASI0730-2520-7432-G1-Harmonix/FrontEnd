@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import { HouseholdApi } from '@/households/infrastructure/household-api';
 
 const props = defineProps({
   householdId: { type: String, required: true },
@@ -12,9 +13,39 @@ const router = useRouter();
 
 const onContinue = async () => {
   try {
+    let targetId = props.householdId;
+    const storedUser = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : {};
+    const representativeId = storedUser?.id;
+    const basePayload = {
+      name: 'New Household',
+      currency: 'USD',
+      description: '',
+      memberCount: 1,
+      representativeId
+    };
+
+    // If householdId missing or not found, create it now
+    let exists = false;
+    if (targetId) {
+      try {
+        const existing = await HouseholdApi.getById(targetId);
+        exists = !!existing?.id;
+      } catch (_) { exists = false; }
+    }
+    if (!exists) {
+      const payload = { id: targetId || null, ...basePayload };
+      const created = await HouseholdApi.create(payload);
+      targetId = created?.id;
+      if (targetId) {
+        storedUser.householdId = targetId;
+        localStorage.setItem('householdId', targetId);
+        localStorage.setItem('user', JSON.stringify(storedUser));
+      }
+    }
+
     localStorage.removeItem('isNewUser');
     emit('update:visible', false);
-    await router.replace(`/dashboard/representative/household/${props.householdId}`);
+    if (targetId) await router.replace(`/dashboard/representative/household/${targetId}`);
   } catch (error) { console.error('Navigation error:', error); }
 };
 
