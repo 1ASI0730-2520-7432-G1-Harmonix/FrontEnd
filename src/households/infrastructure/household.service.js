@@ -8,6 +8,17 @@ export class HouseholdService {
     const errors = household.validate();
     if (errors) throw errors;
 
+    // Client-side guard for Free plan limits
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const plan = String(user.plan || 'FREE').toUpperCase();
+    if (plan === 'FREE') {
+      if (household.memberCount > 3)
+        throw new Error('Con el plan Free solo puedes registrar hasta 3 miembros en el hogar.');
+      const existing = await HouseholdApi.listByRepresentative(user.id);
+      if (Array.isArray(existing) && existing.length >= 1)
+        throw new Error('Con el plan Free solo puedes tener 1 hogar. Elimina el existente para crear uno nuevo.');
+    }
+
     const created = await HouseholdApi.create(toDTO(household));
     return toEntity(created);
   }
@@ -37,6 +48,12 @@ export class HouseholdService {
       const household = new Household(householdData);
       const errors = household.validate();
       if (errors) throw errors;
+
+       // Client-side guard for Free plan limits on edit
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const plan = String(user.plan || 'FREE').toUpperCase();
+      if (plan === 'FREE' && household.memberCount > 3)
+        throw new Error('Con el plan Free solo puedes registrar hasta 3 miembros en el hogar.');
 
       const currentHousehold = await this.getHouseholdById(id);
       if (!currentHousehold) throw new Error('No se encontró el hogar para actualizar');

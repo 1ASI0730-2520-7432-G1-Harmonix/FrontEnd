@@ -33,9 +33,24 @@ onMounted(async () => {
   const userData = localStorage.getItem('user');
   if (userData) {
     user.value = JSON.parse(userData);
-    const isNewUser = localStorage.getItem('isNewUser');
-    if (isNewUser === 'true') {
-      showHouseholdModal.value = true; // mostrar siempre si es nuevo
+    const isNewUser =
+      localStorage.getItem('isNewUser') === 'true' ||
+      user.value?.isNewUser === true;
+    if (isNewUser) {
+      // Check Free-plan limit before showing modal
+      const plan = String(user.value?.plan || 'FREE').toUpperCase();
+      if (plan === 'FREE') {
+        const existing = await HouseholdApi.listByRepresentative(user.value.id);
+        if (Array.isArray(existing) && existing.length >= 1) {
+          localStorage.removeItem('isNewUser');
+          user.value.isNewUser = false;
+          showHouseholdModal.value = false;
+          await ensureHouseholdForRepresentative();
+          await loadHouseholdMembers();
+          return;
+        }
+      }
+      showHouseholdModal.value = true;
     } else {
       await ensureHouseholdForRepresentative();
       await loadHouseholdMembers();

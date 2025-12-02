@@ -52,10 +52,18 @@ async function signIn() {
       password: normalizedPassword
     });
 
-    const { token, id, email: responseEmail } = response.data || {};
+    const { 
+      token, 
+      id, 
+      email: responseEmail,
+      isNewUser: authIsNewUser,
+      householdId: authHouseholdId,
+      role: responseRole,
+      plan: authPlan
+    } = response.data || {};
     if (!token) throw new Error('Token not returned. Please try again.');
 
-    const role = decodeRoleFromToken(token) || 'representative';
+    const role = responseRole?.toLowerCase?.() || decodeRoleFromToken(token) || 'representative';
 
     // Save token first so profile fetch includes Authorization header
     localStorage.setItem(AUTH_TOKEN_KEY, token);
@@ -63,16 +71,20 @@ async function signIn() {
     // Fetch full profile to capture householdId, plan and isNewUser
     const profile = await fetchUserProfile(id);
 
+    const onboardingPending = (authIsNewUser ?? false) || profile?.isNewUser?.toLowerCase?.() === 'true';
+    const resolvedHouseholdId = authHouseholdId || profile?.houseHoldId || '';
+    const resolvedPlan = (authPlan || profile?.plan || 'FREE').toString().toUpperCase();
+
     localStorage.setItem('user', JSON.stringify({
       id,
       email: responseEmail || normalizedEmail,
       role,
-      householdId: profile?.houseHoldId || '',
-      isNewUser: profile?.isNewUser?.toLowerCase?.() === 'true',
-      plan: profile?.plan || 'FREE'
+      householdId: resolvedHouseholdId,
+      isNewUser: onboardingPending,
+      plan: resolvedPlan
     }));
 
-    if (profile?.isNewUser?.toLowerCase?.() === 'true') {
+    if (onboardingPending) {
       localStorage.setItem('isNewUser', 'true');
     } else {
       localStorage.removeItem('isNewUser');

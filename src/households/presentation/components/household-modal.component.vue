@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import { HouseholdApi } from '@/households/infrastructure/household-api';
+import { HouseholdService } from '@/households/infrastructure/household.service';
 
 const props = defineProps({
   householdId: { type: String, required: true },
@@ -33,6 +34,15 @@ const onContinue = async () => {
       } catch (_) { exists = false; }
     }
     if (!exists) {
+      const plan = String(storedUser?.plan || 'FREE').toUpperCase();
+      if (plan === 'FREE') {
+        const existing = await HouseholdService.getHouseholds(representativeId);
+        if (Array.isArray(existing) && existing.length >= 1) {
+          alert('Con el plan Free solo puedes tener 1 hogar. Elimina el existente para crear uno nuevo.');
+          emit('update:visible', false);
+          return;
+        }
+      }
       const payload = { id: targetId || null, ...basePayload };
       const created = await HouseholdApi.create(payload);
       targetId = created?.id;
@@ -46,7 +56,11 @@ const onContinue = async () => {
     localStorage.removeItem('isNewUser');
     emit('update:visible', false);
     if (targetId) await router.replace(`/dashboard/representative/household/${targetId}`);
-  } catch (error) { console.error('Navigation error:', error); }
+  } catch (error) { 
+    console.error('Navigation error:', error); 
+    const msg = error?.response?.data?.message || error?.message || 'No se pudo crear el hogar.';
+    alert(msg);
+  }
 };
 
 const onSkip = () => { localStorage.removeItem('isNewUser'); emit('update:visible', false); };

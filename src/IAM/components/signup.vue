@@ -41,7 +41,8 @@ function mapRole(rawRole) {
 
 // FREE -> 0, PREMIUM -> 1 (requested mapping)
 function getPlanCode(planLabel) {
-  return planLabel === 'PREMIUM' ? 1 : 0;
+  // Backend enum: 1 = Free, 2 = Premium
+  return planLabel === 'PREMIUM' ? 2 : 1;
 }
 
 async function signUp() {
@@ -77,7 +78,7 @@ async function confirmPlanAndCreate() {
     const planLabel = selectedPlan.value || 'FREE';
     const planCode = getPlanCode(planLabel);
 
-    // 1) Sign-up (backend ignores unknown fields; plan sent for compatibility)
+    // 1) Sign-up (plan now respected by backend)
     await httpInstance.post('/authentication/sign-up', {
       email: normalizedEmail,
       password: normalizedPassword,
@@ -86,41 +87,9 @@ async function confirmPlanAndCreate() {
       plan: planCode
     });
 
-    // 2) Sign-in to obtain JWT
-    const signInResponse = await httpInstance.post('/authentication/sign-in', {
-      email: normalizedEmail,
-      password: normalizedPassword
-    });
-
-    const { token, id } = signInResponse.data || {};
-    if (!token) throw new Error('Token was not returned after sign-in.');
-
-    const roleLower = role.toLowerCase();
-
-    // Persist token before fetching profile so the interceptor adds Authorization
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-
-    // Fetch full profile to capture householdId and isNewUser
-    const profile = await fetchUserProfile(id);
-
-    localStorage.setItem('user', JSON.stringify({
-      id,
-      email: normalizedEmail,
-      role: roleLower,
-      plan: planLabel,
-      planCode,
-      householdId: profile?.houseHoldId || '',
-      isNewUser: profile?.isNewUser?.toLowerCase?.() === 'true'
-    }));
-
-    if (profile?.isNewUser?.toLowerCase?.() === 'true') {
-      localStorage.setItem('isNewUser', 'true');
-    } else {
-      localStorage.removeItem('isNewUser');
-    }
-
-    success.value = 'Account created successfully. Redirecting to login...';
-    setTimeout(() => router.push('/login'), 1500);
+    // 2) Do NOT auto sign-in here; first interactive login should flip isNewUser to false.
+    success.value = 'Account created successfully. Please sign in to continue.';
+    setTimeout(() => router.push('/login'), 1200);
   } catch (err) {
     const message = err.response?.data?.message || err.message || 'Failed to create account. Please try again.';
     error.value = message;

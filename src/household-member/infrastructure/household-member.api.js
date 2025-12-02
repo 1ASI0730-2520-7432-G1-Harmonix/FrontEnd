@@ -21,7 +21,7 @@ export const HouseholdMemberApi = {
         return Array.isArray(data) ? data : (data ?? []);
     },
 
-    // GET /householdMembers?householdId=HOG-xxx → array
+    // GET /householdMembers?householdId=HHxxxxxxxxxxxx → array
     async getByHouseholdId(householdId) {
         const { data } = await httpInstance.get(`${resourceEndpoint}?householdId=${encodeURIComponent(householdId)}`);
         return Array.isArray(data) ? data : (data ?? []);

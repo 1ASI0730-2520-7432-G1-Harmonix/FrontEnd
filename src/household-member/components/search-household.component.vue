@@ -88,7 +88,7 @@ async function onJoin () {
       </p>
 
       <div class="input-row">
-        <InputText v-model="householdId" placeholder="Ej: HOG-1759796571919" />
+        <InputText v-model="householdId" placeholder="Ej: HH1728345678901" />
         <Button label="Buscar" icon="pi pi-search" @click="searchHousehold" />
       </div>
 
