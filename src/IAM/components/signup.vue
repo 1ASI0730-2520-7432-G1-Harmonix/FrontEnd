@@ -84,7 +84,8 @@ async function confirmPlanAndCreate() {
       password: normalizedPassword,
       name: name.value,
       role,
-      plan: planCode
+      plan: planCode,
+      householdId: userType.value === 'Member' ? householdId.value || null : null
     });
 
     // 2) Do NOT auto sign-in here; first interactive login should flip isNewUser to false.

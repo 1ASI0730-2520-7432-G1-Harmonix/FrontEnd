@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import httpInstance from '@/shared/services/http.instance';
+import InvitationService from '@/invitations/infrastructure/invitation.service';
 import { HouseholdService } from '@/households/infrastructure/household.service';
 import { useI18n } from 'vue-i18n';
 
@@ -145,16 +145,6 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-async function checkEmailExists(email) {
-  try {
-    const response = await httpInstance.get(`/user/email/${encodeURIComponent(email)}`);
-    return !!response.data;
-  } catch (error) {
-    console.error('Error checking email:', error);
-    return false;
-  }
-}
-
 async function handleSubmit() {
   if (!validateForm()) {
     return;
@@ -183,12 +173,6 @@ async function handleSubmit() {
     // guard errors are non-blocking
   }
 
-  const emailExists = await checkEmailExists(formData.value.email);
-  if (emailExists) {
-    errors.value.email = t('representativeMembers.addMember.validation.emailExists');
-    return;
-  }
-
   loading.value = true;
 
   try {
@@ -198,7 +182,7 @@ async function handleSubmit() {
       description: formData.value.description.trim()
     };
 
-    await httpInstance.post('/household_member', payload);
+    await InvitationService.create(payload);
 
     toast.add({
       severity: 'success',
