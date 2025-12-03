@@ -16,14 +16,22 @@ export const UserApi={
         return Array.isArray(arr) ? arr[0] : arr;
     },
 
-    async getById(id) {
-        const res = await httpInstance.get(`${resourceEndpoint}/${id}`);
+    async getById(id, token) {
+        const res = await httpInstance.get(`${resourceEndpoint}/user/user/${id}`,{
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        });
         const arr = res.data || {};
         return Array.isArray(arr) ? arr[0] : arr;
     },
 
-    async getByEmail(email) {
-        const res = await httpInstance.get(`${resourceEndpoint}/?email=${email}`);
+    async getByEmail(email, token) {
+        const res = await httpInstance.get(`${resourceEndpoint}/user/byEmail/${email}`,{
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        });
         const arr = res.data || {};
         return Array.isArray(arr) ? arr[0] : arr;
     },

@@ -8,17 +8,17 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
-import Divider from 'primevue/divider';
 import Message from 'primevue/message';
+import {useUserStore} from "@/IAM/application/user.store.js";
 
 const router = useRouter();
 const email = ref('');
 const password = ref('');
 const remember = ref(false);
 const error = ref('');
+const userStore = useUserStore();
 
 async function signIn() {
-  error.value = '';
   if (!email.value || !password.value) {
     error.value = 'Please fill in your email and password.';
     return;
@@ -28,54 +28,36 @@ async function signIn() {
   const normalizedEmail = String(email.value).trim().toLowerCase();
   const normalizedPassword = String(password.value);
 
+  const signInData = {
+    email: normalizedEmail,
+    password: normalizedPassword,
+  }
+
   try {
-    // Find user by email (case-insensitive) and trim
-    const response = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
-    const all = (response.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
-    // Prefer ACTIVE users; if multiple, pick the latest by id
-    const actives = all.filter(u => String(u.status || '').toLowerCase() === 'active');
-    const users = actives.length > 0 ? actives : all;
+    // Use SignIn endpoint
+    const signInResponse = await userStore.signInUser(signInData);
+    //Fetch User Data
+    const userData = await userStore.loadUserById(signInResponse.id, signInResponse.token);
 
-    if (users.length === 0) {
-      error.value = 'Invalid email or password.';
+    if (userData == null) {
+      error.value = userStore.errors[0] ?? "Login failed";
       return;
     }
 
-    const user = users.sort((a,b) => Number(b.id||0) - Number(a.id||0))[0];
-    if (user.password !== normalizedPassword) {
-      error.value = 'Invalid email or password.';
-      return;
-    }
-
-    // Optional: block invited users from signing in until they activate
-    if (user.status && String(user.status).toLowerCase() === 'invited') {
-      error.value = 'Please activate your account from the invitation before signing in.';
-      return;
-    }
 
     // Store user info in localStorage
-    const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      householdId: user.householdId,
-      isNewUser: user.isNewUser,
-      plan: user.plan || 'FREE'
-    };
-    
     localStorage.setItem('user', JSON.stringify(userData));
 
     // Check if this is a new user
-    if (user.role === 'representative' && user.isNewUser) {
+    if (userData.role === 'Representative' && userData.isNewUser) {
       localStorage.setItem('isNewUser', 'true');
       
       // Update user to no longer be new
-      await httpInstance.patch(`/users/${user.id}`, { isNewUser: false });
+      //await httpInstance.patch(`/users/${user.id}`, { isNewUser: false });
     }
 
     // Redirect based on role
-    if (user.role === 'representative') {
+    if (userData.role === 'Representative') {
       await router.push({name: 'representative-dashboard'});
     } else {
       await router.push({name: 'member-dashboard'});

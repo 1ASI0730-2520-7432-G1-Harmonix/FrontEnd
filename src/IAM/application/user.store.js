@@ -1,8 +1,7 @@
 ﻿// stores/user.js
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-// ⬇️ adjust the path to your actual service
-import { UserService } from '@/services/UserService'
+import { UserService } from '/src/IAM/infrastructure/user.service.js/'
 
 export const useUserStore = defineStore('user', () => {
     // state
@@ -19,23 +18,27 @@ export const useUserStore = defineStore('user', () => {
         err?.response?.data?.message ?? err?.message ?? String(err)
 
 
-    async function signInUser(email, password) {
+    async function signInUser(signInData) {
         errors.value = []
         loading.value = true
         try {
-
-
+            current.value = await UserService.signInUser(signInData)
+            return current.value;
         }catch (err){
-
+            errors.value.push(normalizeError(err));
+            current.value = null
+            return null
+        }finally {
+            loading.value = false
         }
     }
 
     // actions
-    async function loadUserById(id) {
+    async function loadUserById(id, token) {
         errors.value = []
         loading.value = true
         try {
-            current.value = await UserService.getUserById(id)
+            current.value = await UserService.getUserById(id, token)
             return current.value
         } catch (err) {
             errors.value.push(normalizeError(err))
@@ -133,6 +136,7 @@ export const useUserStore = defineStore('user', () => {
         // actions
         loadUserById,
         loadUserByEmail,
+        signInUser,
         create,
         update,
         remove,

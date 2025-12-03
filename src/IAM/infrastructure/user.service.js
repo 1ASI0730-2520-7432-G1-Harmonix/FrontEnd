@@ -17,17 +17,24 @@ export class UserService {
         if(!userData) throw new Error("LogIn Data doesn't exist");
 
         try {
-            const dto = await UserApi.signInUser(userData);
+            const dto = await UserApi.signIn(userData);
+            if(!dto) throw new Error(`Wasn't able to sign in user with given credentials ${userData}`);
+            //Check data returned
+            console.log(dto);
+            return dto;
+        }catch(error) {
+            console.error("Error signing in user: ", error);
+            throw new Error(error.message || "We are not able to obtain the user");
         }
     }
 
-    static async getUserById(id) {
+    static async getUserById(id, token) {
         if(!id) {
             console.error('ID is not valid');
             throw new Error(`ID doesn't exist`);
         }
         try {
-            const dto = await UserApi.getById(id);
+            const dto = await UserApi.getById(id, token);
             if(!dto) throw new Error(`Wasnt able to find a user with id ${id}`);
             return toEntity(dto);
         }catch (error){
