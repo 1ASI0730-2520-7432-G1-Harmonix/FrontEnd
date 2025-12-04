@@ -126,7 +126,7 @@ async function saveIncome() {
   incomeSuccess.value = ''
   savingIncome.value = true
   try {
-    await http.patch(`/householdMember/${memberId.value}`, {
+    await http.patch(`/household_member/${memberId.value}`, {
       income: Number(income.value || 0).toFixed(2),
       updatedAt: new Date().toISOString()
     })
