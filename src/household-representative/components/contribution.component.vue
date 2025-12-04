@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, computed, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -18,7 +18,8 @@ import TabPanel from 'primevue/tabpanel'
 
 import houseImg from '@/assets/house.png'
 
-import { HouseholdAPI, http as localHttp } from '@/household-member/infrastructure/household.api.js'
+import { HouseholdAPI } from '@/household-member/infrastructure/household.api.js'
+import http from '@/shared/services/http.instance.js'
 
 const { t } = useI18n()
 
@@ -55,16 +56,17 @@ const editAmount = ref(0)
 const editingRow = ref(null)
 const activeContributionId = ref('')
 
-// Tabla 2 (informativa): distribución proporcional acumulativa
+// Tabla 2 (informativa): distribuciÃ³n proporcional acumulativa
 const allocRows = ref([])
 const memberTotals = ref([])
-// Contribución (última) por billId
+// ContribuciÃ³n (Ãºltima) por billId
 const contribByBill = ref(new Map())
 const billsRef = ref([])
+const membersRef = ref([])
 // member-contribution status cache: key `${billId}::${memberId}` -> { id, status, amount, payedAt, contributionId }
 const statusByMemberAndBill = ref(new Map())
 
-// Agrupar por bill para mostrarlos en pestañas
+// Agrupar por bill para mostrarlos en pestaÃ±as
 const allocByBill = computed(() => {
   const map = new Map()
   for (const r of allocRows.value || []) {
@@ -89,7 +91,7 @@ const allocByBill = computed(() => {
   return arr
 })
 
-// Grupos que tienen una contribuci�n creada (para renderizar una "ventana" por bill)
+// Grupos que tienen una contribución creada (para renderizar una "ventana" por bill)
 const groupsWithContribution = computed(() => {
   const groups = allocByBill.value || []
   const byId = new Map(groups.map(g => [String(g.billId), g]))
@@ -221,6 +223,7 @@ async function loadData(){
     const m = Array.isArray(members) ? members : []
     const b = Array.isArray(bills) ? bills : []
     billsRef.value = b
+    membersRef.value = m
 
     monthlyTotal.value = b.reduce((s,x)=> s + Number(x?.amount || 0), 0)
 
@@ -273,10 +276,10 @@ async function saveIncome(){
       if(!rep?.id || !householdId.value) throw new Error(t('representativeContributions.errors.invalidUserHousehold'));
       const now = new Date().toISOString();
       const payload = { id: `HM-${Date.now()}`, userId: String(rep.id), householdId: householdId.value, income: amount.toFixed(2), joinedAt: now, createdAt: now, updatedAt: now };
-      const created = await localHttp.post('/householdMember', payload);
+      const created = await http.post('/household_member', payload);
       row.memberId = (created?.data?.id) || payload.id;
     } else {
-      await localHttp.patch(`/householdMember/${row.memberId}`, { income: amount.toFixed(2) });
+      await http.put(`/household_member/${row.memberId}`, { income: amount.toFixed(2) });
     }
     success.value = t('representativeContributions.messages.incomeUpdated');
     editVisible.value = false;
@@ -286,7 +289,7 @@ async function saveIncome(){
     error.value = e?.message || t('representativeContributions.messages.incomeUpdateError');
   }
 }
-// Crear contribución para un bill
+// Crear contribuciÃ³n para un bill
 const createContribVisible = ref(false)
 const currentBill = ref(null)
 const contribDesc = ref('')
@@ -295,16 +298,16 @@ const selectedBillId = ref('')
 const billOptions = computed(() => (billsRef.value || []).map(b => ({ label: `${b.id} - ${b.description}`, value: String(b.id) })))
 
 function openCreateContribution(group){
-  currentBill.value = group
-  contribDesc.value = group?.billDesc || ''
-  selectedBillId.value = group?.billId ? String(group.billId) : ''
-  contribDeadline.value = group?.deadlineForMembers ? new Date(group.deadlineForMembers) : null
+  currentBill.value = group || {}
+  contribDesc.value = ''
+  selectedBillId.value = ''
+  contribDeadline.value = null
   createContribVisible.value = true
 }
 
 async function createContribution(){
   try{
-    const billId = String(selectedBillId.value || currentBill.value?.billId || '')
+    const billId = String(selectedBillId.value || '')
     if(!billId) throw new Error(t('representativeContributions.errors.billNotSelected'))
     if(!householdId.value) throw new Error(t('representativeContributions.errors.invalidHousehold'))
     
@@ -321,18 +324,37 @@ async function createContribution(){
       }
     }
     
-    const now = new Date().toISOString()
     const payload = {
-      id: `CN-${Date.now()}`,
       billId,
       householdId: householdId.value,
       description: String(contribDesc.value || currentBill.value.billDesc || ''),
       deadlineForMembers: contribDeadline.value ? new Date(contribDeadline.value).toISOString() : null,
-      strategy: 1,
-      createdAt: now,
-      updatedAt: now
+      strategy: 1
     }
-    await localHttp.post('/contributions', payload)
+    const contribResp = await http.post('/contribution', payload)
+    const createdContribution = contribResp?.data || {}
+    const contributionId = createdContribution?.id || createdContribution?.Id || null
+    if (!contributionId) throw new Error(t('representativeContributions.messages.contributionCreateError'))
+
+    // Crear member_contribution para cada miembro del household
+    const members = Array.isArray(membersRef.value) ? membersRef.value : []
+    const totalIncome = members.reduce((sum, m) => sum + Number(m?.income || 0), 0)
+    const billAmount = Number(bill?.amount || 0)
+
+    const mcPayloads = members.map(m => {
+      const income = Number(m?.income || 0)
+      const percent = totalIncome > 0 ? (income / totalIncome) : 0
+      const assigned = billAmount * percent
+      return {
+        memberId: m.id,
+        contributionId: contributionId,
+        amount: Number(assigned.toFixed(2))
+      }
+    })
+
+    // Ejecutar en paralelo pero no bloquear si alguno falla individualmente
+    await Promise.all(mcPayloads.map(p => http.post('/member_contribution', p)))
+
     success.value = t('representativeContributions.messages.contributionCreated')
     createContribVisible.value = false
     await loadData()
@@ -443,29 +465,51 @@ async function loadUserIncome(repId){
       const list = await HouseholdAPI.householdsByRepresentative(repId)
       households.value = Array.isArray(list) ? list : []
     }
-    
-    const userIncome = await localHttp.get(`/userIncome?userId=${repId}`)
-    const ui = Array.isArray(userIncome.data) ? userIncome.data[0] : userIncome.data
-    userTotalIncome.value = Number(ui?.income || 0)
+
+    // Obtener ingreso del usuario; si no existe, usar 0 sin romper el flujo
+    try {
+      const userIncome = await http.get(`/user-income/byUserId/${repId}`)
+      const ui = Array.isArray(userIncome.data) ? userIncome.data[0] : userIncome.data
+      userTotalIncome.value = Number(ui?.income || 0)
+    } catch (err) {
+      // 404 = aún no tiene registro de ingresos
+      if (err?.response?.status === 404) {
+        userTotalIncome.value = 0
+      } else {
+        throw err
+      }
+    }
     
     // Get allocations from incomeAllocation table
-    const allocations = await localHttp.get(`/incomeAllocation?userId=${repId}`)
-    const allocs = Array.isArray(allocations.data) ? allocations.data : []
+    let allocs = []
+    try {
+      const allocations = await http.get(`/income_allocation/byuserid/${repId}`)
+      allocs = Array.isArray(allocations.data) ? allocations.data : []
+    } catch (err) {
+      if (err?.response?.status !== 404) throw err
+      allocs = []
+    }
     
     // If no allocations exist, create them from householdMember or from households
     if (allocs.length === 0) {
       // Get householdMember records for this user
-      const hmResponse = await localHttp.get(`/householdMember?userId=${repId}`)
-      const hmList = Array.isArray(hmResponse.data) ? hmResponse.data : (hmResponse.data ? [hmResponse.data] : [])
+      let hmList = []
+      try {
+        const hmResponse = await http.get(`/household_member/user/${repId}`)
+        hmList = Array.isArray(hmResponse.data) ? hmResponse.data : (hmResponse.data ? [hmResponse.data] : [])
+      } catch (err) {
+        if (err?.response?.status !== 404) throw err
+        hmList = []
+      }
       
       if (hmList.length > 0) {
         // Build allocation array with household names
-        incomeAllocations.value = hmList.map(hm => {
+      incomeAllocations.value = hmList.map(hm => {
           const household = households.value.find(h => h.id === hm.householdId)
           // Calculate percentage from stored income
           const percentage = userTotalIncome.value > 0 ? (Number(hm.income || 0) / userTotalIncome.value * 100) : 0
           return {
-            id: `IA-${repId}-${hm.householdId}`,
+            id: hm?.allocationId || null,
             householdId: hm.householdId,
             householdName: household?.name || hm.householdId,
             percentage: Number(percentage.toFixed(2))
@@ -476,7 +520,7 @@ async function loadUserIncome(repId){
         incomeAllocations.value = households.value.map((h, idx) => {
           const percentage = households.value.length > 0 ? (100 / households.value.length) : 0
           return {
-            id: `IA-${repId}-${h.id}`,
+            id: null,
             householdId: h.id,
             householdName: h.name,
             percentage: idx === 0 ? (100 - (percentage * (households.value.length - 1))) : percentage
@@ -519,18 +563,32 @@ async function saveUserIncome(){
     const now = new Date().toISOString()
     
     // Save or update user income
-    const userIncomeData = {
-      id: `UI-${userId.value}`,
-      userId: userId.value,
-      income: userTotalIncome.value.toFixed(2),
-      updatedAt: now
-    }
-    
+    let existingIncomeId = null
     try {
-      await localHttp.patch(`/userIncome/UI-${userId.value}`, userIncomeData)
-    } catch {
-      userIncomeData.createdAt = now
-      await localHttp.post('/userIncome', userIncomeData)
+      const uiResp = await http.get(`/user-income/byUserId/${userId.value}`)
+      const ui = Array.isArray(uiResp.data) ? uiResp.data[0] : uiResp.data
+      existingIncomeId = ui?.id || null
+    } catch (err) {
+      if (err?.response?.status !== 404) throw err
+      existingIncomeId = null
+    }
+
+    if (existingIncomeId) {
+      const userIncomeData = {
+        id: existingIncomeId,
+        income: userTotalIncome.value.toFixed(2),
+        updatedAt: now
+      }
+      await http.put(`/user-income/byId/${existingIncomeId}`, userIncomeData)
+    } else {
+      const userIncomeData = {
+        id: `UI-${Date.now()}`,
+        userId: userId.value,
+        income: userTotalIncome.value.toFixed(2),
+        createdAt: now,
+        updatedAt: now
+      }
+      await http.post('/user-income', userIncomeData)
     }
     
     // Update householdMember records with calculated income (total income * percentage)
@@ -538,16 +596,23 @@ async function saveUserIncome(){
       const calculatedIncome = (userTotalIncome.value * Number(alloc.percentage || 0) / 100).toFixed(2)
       
       // Find existing householdMember for this user and household
-      const existingMember = await localHttp.get(`/householdMember?userId=${userId.value}&householdId=${alloc.householdId}`)
-      const memberList = Array.isArray(existingMember.data) ? existingMember.data : [existingMember.data]
+      let memberList = []
+      try {
+        const existingMember = await http.get(`/household_member/user/${userId.value}`)
+        const list = Array.isArray(existingMember.data) ? existingMember.data : (existingMember.data ? [existingMember.data] : [])
+        memberList = list.filter(m => String(m.householdId) === String(alloc.householdId))
+      } catch (err) {
+        if (err?.response?.status !== 404) throw err
+        memberList = []
+      }
       
       if (memberList.length > 0) {
         // Update existing householdMember
         const memberId = memberList[0].id
-        await localHttp.patch(`/householdMember/${memberId}`, {
-          income: calculatedIncome,
-          updatedAt: now
-        })
+        await http.put(`/household_member/${memberId}`, {
+            income: calculatedIncome,
+            updatedAt: now
+          })
       } else {
         // Create new householdMember if doesn't exist
         const newMember = {
@@ -559,23 +624,26 @@ async function saveUserIncome(){
           createdAt: now,
           updatedAt: now
         }
-        await localHttp.post('/householdMember', newMember)
+        await http.post('/household_member', newMember)
       }
       
       // Save allocation for reference
       const allocData = {
+        id: alloc.id,
         userId: userId.value,
         householdId: alloc.householdId,
-        percentage: Number(alloc.percentage || 0),
-        updatedAt: now
+        percentage: Number(alloc.percentage || 0)
       }
       
-      try {
-        await localHttp.patch(`/incomeAllocation/${alloc.id}`, allocData)
-      } catch {
-        allocData.id = `IA-${userId.value}-${alloc.householdId}`
-        allocData.createdAt = now
-        await localHttp.post('/incomeAllocation', allocData)
+      if (allocData.id) {
+        await http.put(`/income_allocation/byid/${encodeURIComponent(allocData.id)}`, allocData)
+      } else {
+        const created = await http.post('/income_allocation', {
+          userId: allocData.userId,
+          householdId: allocData.householdId,
+          percentage: allocData.percentage
+        })
+        alloc.id = created?.data?.id || alloc.id
       }
     }
     
@@ -596,28 +664,28 @@ async function toggleMemberStatus(row){
     if(!c?.id) throw new Error(t('representativeContributions.errors.noContribution'))
     const key = `${String(row.billId)}::${String(row.memberId)}`
     const current = statusByMemberAndBill.value.get(key)
-    const now = new Date().toISOString()
     if(current?.id){
-      const newStatus = current.status ? 0 : 1
-      const payload = { status: newStatus, updatedAt: now, payedAt: newStatus ? now : null, amount: Number(row.assigned || 0).toFixed(2) }
-      await localHttp.patch(`/memberContributions/${current.id}`, payload)
-      statusByMemberAndBill.value.set(key, { ...current, ...payload })
-      row.status = newStatus
+      await http.delete(`/member_contribution/${current.id}`)
+      statusByMemberAndBill.value.delete(key)
+      row.status = 0
       await loadData()
     } else {
+      // Crear member_contribution pendiente con el monto asignado
       const payload = {
-        id: `MC-${Date.now()}`,
         contributionId: c.id,
         memberId: row.memberId,
-        amount: Number(row.assigned || 0).toFixed(2),
-        status: 1,
-        payedAt: now,
-        createdAt: now,
-        updatedAt: now
+        amount: Number(row.assigned || 0).toFixed(2)
       }
-      await localHttp.post('/memberContributions', payload)
-      statusByMemberAndBill.value.set(key, payload)
-      row.status = 1
+      const mcResp = await http.post('/member_contribution', payload)
+      const mcData = mcResp?.data || {}
+      statusByMemberAndBill.value.set(key, {
+        id: mcData.id || '',
+        status: mcData.status ?? 0,
+        amount: Number(mcData.amount ?? payload.amount),
+        payedAt: mcData.payedAt || null,
+        contributionId: payload.contributionId
+      })
+      row.status = mcData.status ?? 0
       await loadData()
     }
   }catch(e){
@@ -748,7 +816,7 @@ async function toggleMemberStatus(row){
         </div>
       </Dialog>
 
-      <!-- Panels por cada bill con contribuci�n -->
+      <!-- Panels por cada bill con contribución -->
       <h3 class="mt-5">{{ t('representativeContributions.distribution.title') }}</h3>
       <div class="flex justify-content-end mb-2">
         <Button size="small" :label="t('representativeContributions.buttons.addContribution')" @click="openCreateContribution({})" />
@@ -788,7 +856,7 @@ async function toggleMemberStatus(row){
         </template>
         <div v-else class="empty-panel">{{ t('representativeContributions.distribution.empty') }}</div>
       </div>
-      <!-- Dialog crear contribución -->
+      <!-- Dialog crear contribuciÃ³n -->
       <Dialog v-model:visible="createContribVisible" modal :header="t('representativeContributions.createDialog.title')" :style="{ width: '36rem' }">
         <div class="flex flex-column gap-3">
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
@@ -852,9 +920,9 @@ async function toggleMemberStatus(row){
 }
 :deep(.bill-panel-container) { border: 1px solid #9ec9ff; border-radius: 12px; padding: 0; }
 
-/* Panel vacío (mock) */
+/* Panel vacÃ­o (mock) */
 .empty-panel { display: flex; align-items: center; justify-content: center; min-height: 280px; }
-/* Ocultar tabla y textos; dejar solo el bot�n */
+/* Ocultar tabla y textos; dejar solo el botón */
 .bill-title { display:none; }
 .bill-meta span { display:none; }
 
@@ -900,6 +968,9 @@ async function toggleMemberStatus(row){
 :deep(.p-datatable-sm .p-datatable-tbody > tr > td) { padding: 0.5rem; }
 :deep(.p-inputnumber) { width: 100%; }
 </style>
+
+
+
 
 
 

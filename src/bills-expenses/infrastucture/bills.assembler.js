@@ -4,13 +4,13 @@ export function toEntity(dto = {}) {
     if (!dto || typeof dto !== "object") return new Bill({});
     return new Bill({
         id: dto.id ?? "",
-        householdId: dto.householdId ?? "",
+        householdId: dto.houseHoldId ?? dto.householdId ?? "",
         description: dto.description ?? "",
         amount: typeof dto.amount === "string" ? Number(dto.amount) : (dto.amount ?? 0),
         createdBy: typeof dto.createdBy === "string" ? Number(dto.createdBy) : (dto.createdBy ?? 0),
-        paymentDay: dto.paymentDay ?? "",
-        createdAt: dto.createdAt ?? "",
-        updatedAt: dto.updatedAt ?? "",
+        paymentDay: dto.paymentDate ?? dto.paymentDay ?? "",
+        createdAt: dto.createdAt ?? dto.CreatedAt ?? "",
+        updatedAt: dto.updatedAt ?? dto.UpdatedAt ?? "",
     });
 }
 
@@ -22,12 +22,11 @@ export function toDTO(entity) {
         return num.toFixed(2);
     };
     return {
-        id: entity.id,
-        householdId: entity.householdId,
+        houseHoldId: entity.householdId, // backend expects HouseHoldId
         description: entity.description,
         amount: toMoneyString(entity.amount),
         createdBy: Number(entity.createdBy) || 0,
-        paymentDay: entity.paymentDay,
+        paymentDate: entity.paymentDay,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
     };

@@ -30,31 +30,10 @@ export class MemberContributionService {
         return (arr || []).map(toEntity);
     }
 
-    static async listByBillId(billId) {
-        if (!billId) throw new Error("billId is not valid");
-        const arr = await MemberContributionApi.listByBillId(billId);
+    static async listByContributionId(contributionId) {
+        if (!contributionId) throw new Error("contributionId is not valid");
+        const arr = await MemberContributionApi.listByContributionId(contributionId);
         return (arr || []).map(toEntity);
-    }
-
-    static async updateContribution(id, data) {
-        if (!id) throw new Error("ID is not valid");
-
-        const current = await this.getContributionById(id);
-        if (!current) throw new Error(`Record with id ${id} not found`);
-
-        const merged = new MemberContribution({
-            ...toDTO(current),
-            ...data,
-            id: current.id,
-            updatedAt: new Date().toISOString(),
-        });
-
-        const errors = merged.validate();
-        if (errors) throw errors;
-
-        const updated = await MemberContributionApi.update(id, toDTO(merged));
-        if (!updated) throw new Error("No response from server");
-        return toEntity(updated);
     }
 
     static async deleteContribution(id) {

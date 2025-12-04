@@ -48,10 +48,10 @@ async function loadDashboardData() {
 
   try {
     const results = await Promise.allSettled([
-      withTimeout(httpInstance.get(`/users?householdId=${user.value.householdId}&role=member`)),
+      withTimeout(httpInstance.get(`/user?householdId=${user.value.householdId}&role=member`)),
       withTimeout(httpInstance.get(`/bills?householdId=${user.value.householdId}`)),
-      withTimeout(httpInstance.get(`/contributions?householdId=${user.value.householdId}`)),
-      withTimeout(httpInstance.get(`/households?representativeId=${user.value.id}`))
+      withTimeout(httpInstance.get(`/contribution/byhouseholdid/${user.value.householdId}`)),
+      withTimeout(httpInstance.get(`/house_hold/representative/${user.value.id}`))
     ]);
 
     const safe = (idx, fallback) => (results[idx].status === 'fulfilled' ? results[idx].value.data : fallback);

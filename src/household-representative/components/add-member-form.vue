@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import httpInstance from '@/shared/services/http.instance';
+import InvitationService from '@/invitations/infrastructure/invitation.service';
 import { HouseholdService } from '@/households/infrastructure/household.service';
 import { useI18n } from 'vue-i18n';
 
@@ -53,6 +53,8 @@ const householdOptions = computed(() =>
   }))
 );
 
+const hasHouseholdSelectorAbove = computed(() => !!props.householdId);
+
 async function loadHouseholds() {
   if (!representativeId.value) {
     availableHouseholds.value = [];
@@ -63,6 +65,8 @@ async function loadHouseholds() {
   try {
     const list = await HouseholdService.getHouseholds(representativeId.value);
     availableHouseholds.value = Array.isArray(list) ? list : [];
+    // En cuanto cargan los hogares, forzamos una selección válida
+    syncHouseholdSelection(true);
   } catch (error) {
     console.error('Error loading households for selector:', error);
     availableHouseholds.value = [];
@@ -145,29 +149,24 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-async function checkEmailExists(email) {
-  try {
-    const response = await httpInstance.get(`/users?email=${email}`);
-    return response.data.length > 0;
-  } catch (error) {
-    console.error('Error checking email:', error);
-    return false;
-  }
-}
-
 async function handleSubmit() {
   if (!validateForm()) {
     return;
   }
 
+  if (!formData.value.householdId?.trim()) {
+    errors.value.householdId = t('representativeMembers.addMember.validation.householdRequired');
+    return;
+  }
+
   try {
     if (formData.value.householdId) {
-      const hhRes = await httpInstance.get(`/households?id=${encodeURIComponent(formData.value.householdId)}`);
-      const hh = Array.isArray(hhRes.data) ? hhRes.data[0] : hhRes.data;
+      const hhRes = await httpInstance.get(`/house_hold/${encodeURIComponent(formData.value.householdId)}`);
+      const hh = hhRes.data;
       const max = Number(hh?.memberCount || 0);
       if (Number.isFinite(max) && max > 0) {
-        const usersRes = await httpInstance.get(`/users?householdId=${encodeURIComponent(formData.value.householdId)}&role=member`);
-        const current = Array.isArray(usersRes.data) ? usersRes.data.length : 0;
+        const membersRes = await httpInstance.get(`/household_member/household/${encodeURIComponent(formData.value.householdId)}`);
+        const current = Array.isArray(membersRes.data) ? membersRes.data.length : 0;
         if (current >= max) {
           toast.add({
             severity: 'warn',
@@ -183,39 +182,16 @@ async function handleSubmit() {
     // guard errors are non-blocking
   }
 
-  const emailExists = await checkEmailExists(formData.value.email);
-  if (emailExists) {
-    errors.value.email = t('representativeMembers.addMember.validation.emailExists');
-    return;
-  }
-
   loading.value = true;
 
   try {
-    const userData = {
-      name: formData.value.email.split('@')[0],
-      email: formData.value.email.trim(),
-      password: '',
-      role: 'member',
-      status: 'invited',
-      householdId: formData.value.householdId.trim()
-    };
-
-    const userResponse = await httpInstance.post('/users', userData);
-    const newUser = userResponse.data;
-
-    const nowIso = new Date().toISOString();
-    const householdMemberData = {
-      id: `HM-${Date.now()}`,
-      userId: newUser.id,
+    const payload = {
       householdId: formData.value.householdId.trim(),
-      joinedAt: nowIso,
-      createdAt: nowIso,
-      updatedAt: nowIso,
+      email: formData.value.email.trim(),
       description: formData.value.description.trim()
     };
 
-    await httpInstance.post('/householdMember', householdMemberData);
+    await InvitationService.create(payload);
 
     toast.add({
       severity: 'success',
@@ -281,23 +257,30 @@ function handleCancel() {
 
       <div class="field">
         <label for="householdId" class="field-label">{{ t('representativeMembers.addMember.fields.household') }}</label>
-        <pv-dropdown
-          id="householdId"
-          v-model="formData.householdId"
-          :options="householdOptions"
-          option-label="label"
-          option-value="value"
-          :placeholder="t('representativeMembers.addMember.placeholders.household')"
-          class="form-input"
-          :class="{ 'p-invalid': errors.householdId }"
-          :disabled="loading || !householdOptions.length"
-          :loading="householdsLoading"
-          filter
-          :empty-message="householdsLoading ? t('representativeMembers.addMember.emptyLoading') : t('representativeMembers.addMember.emptyOptions')"
-        />
-        <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
-          {{ t('representativeMembers.addMember.helper.noHouseholds') }}
-        </small>
+        <template v-if="!hasHouseholdSelectorAbove && (householdOptions.length > 1 || !formData.householdId)">
+          <pv-dropdown
+            id="householdId"
+            v-model="formData.householdId"
+            :options="householdOptions"
+            option-label="label"
+            option-value="value"
+            :placeholder="t('representativeMembers.addMember.placeholders.household')"
+            class="form-input"
+            :class="{ 'p-invalid': errors.householdId }"
+            :disabled="loading || !householdOptions.length"
+            :loading="householdsLoading"
+            filter
+            :empty-message="householdsLoading ? t('representativeMembers.addMember.emptyLoading') : t('representativeMembers.addMember.emptyOptions')"
+          />
+          <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
+            {{ t('representativeMembers.addMember.helper.noHouseholds') }}
+          </small>
+        </template>
+        <template v-else>
+          <div class="readonly-pill">
+            {{ householdOptions.find(opt => opt.value === formData.householdId)?.label || formData.householdId || t('representativeMembers.addMember.helper.noHouseholds') }}
+          </div>
+        </template>
         <small v-if="errors.householdId" class="error-message">{{ errors.householdId }}</small>
       </div>
 

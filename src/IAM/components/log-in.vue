@@ -1,14 +1,12 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import httpInstance from '@/shared/services/http.instance';
+import httpInstance, { AUTH_TOKEN_KEY } from '@/shared/services/http.instance';
 
-// PrimeVue components
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
-import Divider from 'primevue/divider';
 import Message from 'primevue/message';
 
 const router = useRouter();
@@ -16,74 +14,89 @@ const email = ref('');
 const password = ref('');
 const remember = ref(false);
 const error = ref('');
+const isSubmitting = ref(false);
+
+async function fetchUserProfile(id) {
+  const res = await httpInstance.get(`/user/user/${id}`);
+  return res.data;
+}
+
+function decodeRoleFromToken(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    const roleClaim = decoded?.role || decoded?.Role || decoded?.roles?.[0];
+    return roleClaim ? String(roleClaim).toLowerCase() : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 async function signIn() {
+  if (isSubmitting.value) return;
   error.value = '';
+
   if (!email.value || !password.value) {
     error.value = 'Please fill in your email and password.';
     return;
   }
 
-  // Normalize inputs
   const normalizedEmail = String(email.value).trim().toLowerCase();
   const normalizedPassword = String(password.value);
 
+  isSubmitting.value = true;
+
   try {
-    // Find user by email (case-insensitive) and trim
-    const response = await httpInstance.get(`/users?email=${encodeURIComponent(normalizedEmail)}`);
-    const all = (response.data || []).filter(u => String(u.email || '').toLowerCase() === normalizedEmail);
-    // Prefer ACTIVE users; if multiple, pick the latest by id
-    const actives = all.filter(u => String(u.status || '').toLowerCase() === 'active');
-    const users = actives.length > 0 ? actives : all;
+    const response = await httpInstance.post('/authentication/sign-in', {
+      email: normalizedEmail,
+      password: normalizedPassword
+    });
 
-    if (users.length === 0) {
-      error.value = 'Invalid email or password.';
-      return;
-    }
+    const { 
+      token, 
+      id, 
+      email: responseEmail,
+      isNewUser: authIsNewUser,
+      householdId: authHouseholdId,
+      role: responseRole,
+      plan: authPlan
+    } = response.data || {};
+    if (!token) throw new Error('Token not returned. Please try again.');
 
-    const user = users.sort((a,b) => Number(b.id||0) - Number(a.id||0))[0];
-    if (user.password !== normalizedPassword) {
-      error.value = 'Invalid email or password.';
-      return;
-    }
+    const role = responseRole?.toLowerCase?.() || decodeRoleFromToken(token) || 'representative';
 
-    // Optional: block invited users from signing in until they activate
-    if (user.status && String(user.status).toLowerCase() === 'invited') {
-      error.value = 'Please activate your account from the invitation before signing in.';
-      return;
-    }
+    // Save token first so profile fetch includes Authorization header
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
 
-    // Store user info in localStorage
-    const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      householdId: user.householdId,
-      isNewUser: user.isNewUser,
-      plan: user.plan || 'FREE'
-    };
-    
-    localStorage.setItem('user', JSON.stringify(userData));
+    // Fetch full profile to capture householdId, plan and isNewUser
+    const profile = await fetchUserProfile(id);
 
-    // Check if this is a new user
-    if (user.role === 'representative' && user.isNewUser) {
+    const onboardingPending = (authIsNewUser ?? false) || profile?.isNewUser?.toLowerCase?.() === 'true';
+    const resolvedHouseholdId = authHouseholdId || profile?.houseHoldId || '';
+    const resolvedPlan = (authPlan || profile?.plan || 'FREE').toString().toUpperCase();
+
+    localStorage.setItem('user', JSON.stringify({
+      id,
+      email: responseEmail || normalizedEmail,
+      role,
+      householdId: resolvedHouseholdId,
+      isNewUser: onboardingPending,
+      plan: resolvedPlan
+    }));
+
+    if (onboardingPending) {
       localStorage.setItem('isNewUser', 'true');
-      
-      // Update user to no longer be new
-      await httpInstance.patch(`/users/${user.id}`, { isNewUser: false });
-    }
-
-    // Redirect based on role
-    if (user.role === 'representative') {
-      await router.push({name: 'representative-dashboard'});
     } else {
-      await router.push({name: 'member-dashboard'});
+      localStorage.removeItem('isNewUser');
     }
 
+    const target = role === 'member' ? 'member-dashboard' : 'representative-dashboard';
+    await router.push({ name: target });
   } catch (err) {
-    error.value = 'An error occurred while signing in. Please try again.';
+    error.value = err.response?.data?.message || err.message || 'An error occurred while signing in. Please try again.';
     console.error('Sign in error:', err);
+  } finally {
+    isSubmitting.value = false;
   }
 }
 </script>
@@ -145,7 +158,7 @@ async function signIn() {
               inputClass="w-full"
               toggleMask
               :feedback="false"
-              placeholder="••••••••"
+              placeholder="********"
               autocomplete="current-password"
           />
         </div>
@@ -157,20 +170,19 @@ async function signIn() {
           </div>
         </div>
 
-        <Button label="Sign in" class="w-full" @click="signIn" />
+        <Button :disabled="isSubmitting" label="Sign in" class="w-full" @click="signIn" />
 
         <div class="custom-divider">
           <span>or</span>
         </div>
 
-
         <div class="grid">
-          <div class="col-12 md:col-6">
+          <div class="col-12 md-6">
             <Button class="w-full" outlined>
               <i class="pi pi-google mr-2" /> Google
             </Button>
           </div>
-          <div class="col-12 md:col-6">
+          <div class="col-12 md-6">
             <Button class="w-full" outlined>
               <i class="pi pi-github mr-2" /> GitHub
             </Button>
@@ -178,7 +190,7 @@ async function signIn() {
         </div>
 
         <p class="mt-4 text-600 text-center">
-          Don’t have an account?
+          Don't have an account?
           <a href="#" class="text-primary"><router-link to="signup">Create one</router-link></a>
         </p>
       </div>
