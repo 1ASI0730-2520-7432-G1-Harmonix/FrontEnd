@@ -55,7 +55,9 @@ async function loadDashboardData() {
     ]);
 
     const safe = (idx, fallback) => (results[idx].status === 'fulfilled' ? results[idx].value.data : fallback);
-    const members = safe(0, []);
+    console.log("Users Payload",safe(0,[]));
+    const members = safe(0, []).filter(u =>
+       u.houseHoldId === user.value.householdId);
     const bills = safe(1, []);
     const contributions = safe(2, []);
     const households = safe(3, []);
