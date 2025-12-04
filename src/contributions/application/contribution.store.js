@@ -25,12 +25,12 @@ export const useContributionStore = defineStore('member-contributions', () => {
     }
   }
 
-  async function loadByBillId(billId) {
+  async function loadByContributionId(contributionId) {
     items.value = []
     errors.value = []
     loading.value = true
     try {
-      items.value = await MemberContributionService.listByBillId(billId)
+      items.value = await MemberContributionService.listByContributionId(contributionId)
       return items.value
     } catch (e) {
       errors.value.push(normalizeError(e))
@@ -48,21 +48,6 @@ export const useContributionStore = defineStore('member-contributions', () => {
       const created = await MemberContributionService.createContribution(data)
       items.value = [created, ...items.value]
       return created
-    } catch (e) {
-      errors.value.push(normalizeError(e))
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function update(id, data) {
-    errors.value = []
-    loading.value = true
-    try {
-      const updated = await MemberContributionService.updateContribution(id, data)
-      items.value = items.value.map((x) => (x.id === id ? updated : x))
-      return updated
     } catch (e) {
       errors.value.push(normalizeError(e))
       throw e
@@ -90,9 +75,8 @@ export const useContributionStore = defineStore('member-contributions', () => {
     loading,
     errors,
     loadByMemberId,
-    loadByBillId,
+    loadByContributionId,
     create,
-    update,
     remove,
   }
 })

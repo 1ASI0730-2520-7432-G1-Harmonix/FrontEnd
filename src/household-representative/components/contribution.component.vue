@@ -62,6 +62,7 @@ const memberTotals = ref([])
 // ContribuciÃ³n (Ãºltima) por billId
 const contribByBill = ref(new Map())
 const billsRef = ref([])
+const membersRef = ref([])
 // member-contribution status cache: key `${billId}::${memberId}` -> { id, status, amount, payedAt, contributionId }
 const statusByMemberAndBill = ref(new Map())
 
@@ -222,6 +223,7 @@ async function loadData(){
     const m = Array.isArray(members) ? members : []
     const b = Array.isArray(bills) ? bills : []
     billsRef.value = b
+    membersRef.value = m
 
     monthlyTotal.value = b.reduce((s,x)=> s + Number(x?.amount || 0), 0)
 
@@ -326,9 +328,33 @@ async function createContribution(){
       billId,
       householdId: householdId.value,
       description: String(contribDesc.value || currentBill.value.billDesc || ''),
-      deadline: contribDeadline.value ? new Date(contribDeadline.value).toISOString() : null
+      deadlineForMembers: contribDeadline.value ? new Date(contribDeadline.value).toISOString() : null,
+      strategy: 1
     }
-    await http.post('/contribution', payload)
+    const contribResp = await http.post('/contribution', payload)
+    const createdContribution = contribResp?.data || {}
+    const contributionId = createdContribution?.id || createdContribution?.Id || null
+    if (!contributionId) throw new Error(t('representativeContributions.messages.contributionCreateError'))
+
+    // Crear member_contribution para cada miembro del household
+    const members = Array.isArray(membersRef.value) ? membersRef.value : []
+    const totalIncome = members.reduce((sum, m) => sum + Number(m?.income || 0), 0)
+    const billAmount = Number(bill?.amount || 0)
+
+    const mcPayloads = members.map(m => {
+      const income = Number(m?.income || 0)
+      const percent = totalIncome > 0 ? (income / totalIncome) : 0
+      const assigned = billAmount * percent
+      return {
+        memberId: m.id,
+        contributionId: contributionId,
+        amount: Number(assigned.toFixed(2))
+      }
+    })
+
+    // Ejecutar en paralelo pero no bloquear si alguno falla individualmente
+    await Promise.all(mcPayloads.map(p => http.post('/member_contribution', p)))
+
     success.value = t('representativeContributions.messages.contributionCreated')
     createContribVisible.value = false
     await loadData()
@@ -638,31 +664,28 @@ async function toggleMemberStatus(row){
     if(!c?.id) throw new Error(t('representativeContributions.errors.noContribution'))
     const key = `${String(row.billId)}::${String(row.memberId)}`
     const current = statusByMemberAndBill.value.get(key)
-    const now = new Date().toISOString()
     if(current?.id){
-      const newStatus = current.status ? 0 : 1
-      const payload = { status: newStatus, updatedAt: now, payedAt: newStatus ? now : null, amount: Number(row.assigned || 0).toFixed(2) }
-      await http.patch(`/member_contribution/${current.id}`, payload)
-      statusByMemberAndBill.value.set(key, { ...current, ...payload })
-      row.status = newStatus
+      await http.delete(`/member_contribution/${current.id}`)
+      statusByMemberAndBill.value.delete(key)
+      row.status = 0
       await loadData()
     } else {
+      // Crear member_contribution pendiente con el monto asignado
       const payload = {
-        id: `MC-${Date.now()}`,
         contributionId: c.id,
         memberId: row.memberId,
-        amount: Number(row.assigned || 0).toFixed(2),
-        status: 1,
-        payedAt: now,
-        createdAt: now,
-        updatedAt: now
+        amount: Number(row.assigned || 0).toFixed(2)
       }
-      const contrib = await http.post('/contribution', payload)
-      if (contrib?.data?.id) {
-        statusByMemberAndBill.value.set(key, { ...payload, id: contrib.data.id })
-      }
-      statusByMemberAndBill.value.set(key, payload)
-      row.status = 1
+      const mcResp = await http.post('/member_contribution', payload)
+      const mcData = mcResp?.data || {}
+      statusByMemberAndBill.value.set(key, {
+        id: mcData.id || '',
+        status: mcData.status ?? 0,
+        amount: Number(mcData.amount ?? payload.amount),
+        payedAt: mcData.payedAt || null,
+        contributionId: payload.contributionId
+      })
+      row.status = mcData.status ?? 0
       await loadData()
     }
   }catch(e){

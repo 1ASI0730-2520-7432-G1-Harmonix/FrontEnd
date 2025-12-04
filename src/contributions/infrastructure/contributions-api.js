@@ -16,22 +16,17 @@ export const MemberContributionApi = {
   },
 
   async listByMemberId(memberId) {
-    const { data } = await http.get(`${resourceEndpoint}?memberId=${encodeURIComponent(memberId)}`);
+    const { data } = await http.get(`${resourceEndpoint}/byMemberId/${encodeURIComponent(memberId)}`);
     return Array.isArray(data) ? data : (data ?? []);
   },
 
-  async listByBillId(billId) {
-    const { data } = await http.get(`${resourceEndpoint}?billId=${encodeURIComponent(billId)}`);
+  async listByContributionId(contributionId) {
+    const { data } = await http.get(`${resourceEndpoint}/byContributionId/${encodeURIComponent(contributionId)}`);
     return Array.isArray(data) ? data : (data ?? []);
   },
 
   async create(resource) {
     const { data } = await http.post(resourceEndpoint, resource);
-    return data;
-  },
-
-  async update(id, resource) {
-    const { data } = await http.put(`${resourceEndpoint}/${id}`, resource);
     return data;
   },
 
