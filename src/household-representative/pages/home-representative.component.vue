@@ -115,7 +115,7 @@ function logout() {
 
 async function removeMember(memberId) {
   try {
-    await httpInstance.delete(`/users/${memberId}`);
+    await httpInstance.delete(`/user/user/${memberId}`);
     await loadHouseholdMembers();
   } catch (error) {
     console.error('Error removing member:', error);

@@ -7,14 +7,22 @@ import httpInstance from '@/shared/services/http.instance';
 
 class MemberDataFetcher {
   async fetchHouseholdMembers(householdId) {
-    return await httpInstance.get(`/household_member/household/${householdId}`);
+    return await httpInstance.get(`/household_member/household/${householdId}/detailed`);
   }
 }
 
 class MemberDataProcessor {
   mapMember(member) {
     return {
-      ...member
+      id: member.householdMemberId || member.id || 0,
+      userId: member.userId || 0,
+      name: member.name || '',
+      email: member.email || '',
+      role: member.role || 'member',
+      status: member.status || 'Inactive',
+      totalContributed: member.totalContributed ?? 0,
+      isRepresentative: member.isRepresentative ?? false,
+      joinedAt: member.joinedAt || null
     };
   }
 }
@@ -35,11 +43,13 @@ class MemberAssembler {
     this.validator = new MemberDataValidator();
   }
   
-  async assembleHouseholdMembers() {
+  async assembleHouseholdMembers(householdId) {
     const userData = JSON.parse(localStorage.getItem('user'));
-    this.validator.validateHouseholdData(userData);
+    // allow explicit householdId selection; fallback to userData.householdId
+    const targetHousehold = householdId || userData?.householdId;
+    this.validator.validateHouseholdData({ householdId: targetHousehold });
 
-    const householdMembersResponse = await this.fetcher.fetchHouseholdMembers(userData.householdId);
+    const householdMembersResponse = await this.fetcher.fetchHouseholdMembers(targetHousehold);
     const householdMembers = householdMembersResponse.data || [];
 
     return householdMembers.map(member => this.processor.mapMember(member));
@@ -69,9 +79,9 @@ class MemberPipeline {
     this.filterProcessor = new MemberFilterProcessor();
   }
   
-  async processMemberData(filters = null) {
+  async processMemberData(filters = null, householdId = null) {
     try {
-      const members = await this.assembler.assembleHouseholdMembers();
+      const members = await this.assembler.assembleHouseholdMembers(householdId);
 
       if (filters) {
         return this.filterProcessor.applyFilters(members, filters);

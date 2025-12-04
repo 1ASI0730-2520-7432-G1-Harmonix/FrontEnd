@@ -1,4 +1,4 @@
-import http from '@/shared/services/http.instance';
+import http from '@/shared/services/http.instance.js';
 
 export const HouseholdApi = {
 

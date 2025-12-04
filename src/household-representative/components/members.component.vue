@@ -22,23 +22,26 @@ const selectedMember = ref(null);
 const user = ref(null);
 const plan = ref('FREE');
 const household = ref(null);
+const households = ref([]);
+const selectedHouseholdId = ref('');
 
-const filteredMembers = computed(() => members.value.filter(member => member.role === 'member'));
+const filteredMembers = computed(() => members.value.filter(member => (member.role || '').toLowerCase() === 'member'));
 
 onMounted(async () => {
   const userData = localStorage.getItem('user');
   if (userData) {
     user.value = JSON.parse(userData);
     plan.value = user.value?.plan || 'FREE';
+    selectedHouseholdId.value = user.value?.householdId || '';
   }
-  await Promise.all([loadMembers(), loadHousehold()]);
+  await Promise.all([loadHouseholds(), loadMembers(), loadHousehold()]);
 });
 
 async function loadMembers() {
   loading.value = true;
   error.value = '';
   try {
-    members.value = await memberPipeline.processMemberData(filters.value);
+    members.value = await memberPipeline.processMemberData(filters.value, selectedHouseholdId.value);
   } catch (err) {
     error.value = t('representativeMembers.toasts.loadError');
     console.error('Error loading members:', err);
@@ -49,10 +52,22 @@ async function loadMembers() {
 
 async function loadHousehold() {
   try {
-    if (!user.value?.householdId) return;
-    household.value = await HouseholdService.getHouseholdById(user.value.householdId);
+    if (!selectedHouseholdId.value) return;
+    household.value = await HouseholdService.getHouseholdById(selectedHouseholdId.value);
   } catch (err) {
     console.error('Error loading household info:', err);
+  }
+}
+
+async function loadHouseholds() {
+  try {
+    if (!user.value?.id) return;
+    households.value = await HouseholdService.getHouseholds(user.value.id);
+    if (!selectedHouseholdId.value && households.value.length) {
+      selectedHouseholdId.value = households.value[0].id;
+    }
+  } catch (err) {
+    console.error('Error loading households list:', err);
   }
 }
 
@@ -113,6 +128,16 @@ const canAddMember = computed(() => {
   if (!maxMembers.value) return true;
   return filteredMembers.value.length < maxMembers.value;
 });
+
+const householdOptions = computed(() =>
+  households.value.map(h => ({ label: h.name ? `${h.name} (${h.id})` : h.id, value: h.id }))
+);
+
+function onSelectHousehold(id) {
+  selectedHouseholdId.value = id;
+  loadMembers();
+  loadHousehold();
+}
 </script>
 
 <template>
@@ -143,6 +168,17 @@ const canAddMember = computed(() => {
     </div>
 
     <div class="search-section mb-3">
+      <div class="flex align-items-center gap-2 mb-2" v-if="householdOptions.length">
+        <span class="text-sm font-semibold">{{ t('representativeMembers.header.householdSelector') }}</span>
+        <pv-dropdown
+          :options="householdOptions"
+          option-label="label"
+          option-value="value"
+          v-model="selectedHouseholdId"
+          class="w-20rem"
+          @change="onSelectHousehold($event.value)"
+        />
+      </div>
       <MembersSearchBar
         :search-term="filters.searchTerm"
         :status-filter="filters.statusFilter"
@@ -186,7 +222,7 @@ const canAddMember = computed(() => {
 
     <AddMemberForm
       v-model:visible="showAddMemberDialog"
-      :household-id="user?.householdId"
+      :household-id="selectedHouseholdId"
       @member-added="handleMemberAdded"
     />
   </div>

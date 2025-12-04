@@ -1,43 +1,36 @@
-﻿import httpInstance from "@/shared/services/http.instance.js";
+import http from "@/shared/services/http.instance.js";
 
-const resourceEndpoint = import.meta.env.VITE_HOUSEHOLD_MEMBER_PATH;
+const resourceEndpoint = "/household_member";
 
 export const HouseholdMemberApi = {
-    resourceEndpoint,
+  resourceEndpoint,
 
-    async getAll() {
-        const { data } = await httpInstance.get(resourceEndpoint);
-        return data;
-    },
+  async getAll() {
+    const { data } = await http.get(resourceEndpoint);
+    return data;
+  },
 
-    async getById(id) {
-        const { data } = await httpInstance.get(`${resourceEndpoint}/${id}`);
-        return data ?? null;
-    },
+  async getById(id) {
+    const { data } = await http.get(`${resourceEndpoint}/${encodeURIComponent(id)}`);
+    return data ?? null;
+  },
 
+  async getByHouseholdId(householdId) {
+    const { data } = await http.get(`${resourceEndpoint}/household/${encodeURIComponent(householdId)}`);
+    return Array.isArray(data) ? data : (data ?? []);
+  },
 
-    async getByRepresentativeId(representativeId) {
-        const { data } = await httpInstance.get(`${resourceEndpoint}?representativeId=${encodeURIComponent(representativeId)}`);
-        return Array.isArray(data) ? data : (data ?? []);
-    },
+  async create(resource) {
+    const { data } = await http.post(resourceEndpoint, resource);
+    return data;
+  },
 
-    // GET /householdMembers?householdId=HHxxxxxxxxxxxx → array
-    async getByHouseholdId(householdId) {
-        const { data } = await httpInstance.get(`${resourceEndpoint}?householdId=${encodeURIComponent(householdId)}`);
-        return Array.isArray(data) ? data : (data ?? []);
-    },
+  async update(id, resource) {
+    const { data } = await http.put(`${resourceEndpoint}/${encodeURIComponent(id)}`, resource);
+    return data;
+  },
 
-    async create(resource) {
-        const { data } = await httpInstance.post(resourceEndpoint, resource);
-        return data;
-    },
-
-    async update(id, resource) {
-        const { data } = await httpInstance.put(`${resourceEndpoint}/${id}`, resource);
-        return data;
-    },
-
-    async remove(id) {
-        await httpInstance.delete(`${resourceEndpoint}/${id}`);
-    },
+  async remove(id) {
+    await http.delete(`${resourceEndpoint}/${encodeURIComponent(id)}`);
+  },
 };

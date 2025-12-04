@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -9,7 +9,8 @@ import Tag from 'primevue/tag'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 
-import { HouseholdAPI, http as householdHttp } from '@/household-member/infrastructure/household.api.js'
+import { HouseholdAPI } from '@/household-member/infrastructure/household.api.js'
+import http from '@/shared/services/http.instance.js'
 
 const loading = ref(true)
 const savingIncome = ref(false)
@@ -69,7 +70,7 @@ const historyRows = computed(() =>
       const bill = bills.value.find(b => String(b.id) === String(contribution?.billId)) || {}
       return {
         id: entry.id,
-        bill: bill.description || contribution?.description || 'Contribución',
+        bill: bill.description || contribution?.description || 'ContribuciÃ³n',
         amount: Number(entry.amount || 0),
         status: entry.status === 1 ? 'Pagado' : 'Pendiente',
         payedAt: entry.payedAt,
@@ -91,7 +92,7 @@ onMounted(async () => {
     if (!stored) throw new Error('Usuario no encontrado')
 
     const parsed = JSON.parse(stored)
-    if (!parsed?.id || !parsed?.householdId) throw new Error('Información de usuario incompleta')
+    if (!parsed?.id || !parsed?.householdId) throw new Error('InformaciÃ³n de usuario incompleta')
 
     userInfo.value = parsed
 
@@ -113,7 +114,7 @@ onMounted(async () => {
 
     memberContributions.value = contribEntries.filter(entry => String(entry.memberId) === memberId.value)
   } catch (err) {
-    incomeError.value = err?.message || 'No se pudo cargar la información.'
+    incomeError.value = err?.message || 'No se pudo cargar la informaciÃ³n.'
   } finally {
     loading.value = false
   }
@@ -125,7 +126,7 @@ async function saveIncome() {
   incomeSuccess.value = ''
   savingIncome.value = true
   try {
-    await householdHttp.patch(`/householdMember/${memberId.value}`, {
+    await http.patch(`/householdMember/${memberId.value}`, {
       income: Number(income.value || 0).toFixed(2),
       updatedAt: new Date().toISOString()
     })
@@ -143,7 +144,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(date) {
-  if (!date) return '—'
+  if (!date) return 'â€”'
   try {
     return new Date(date).toLocaleDateString('es-PE', {
       day: '2-digit',
@@ -234,10 +235,10 @@ function formatDate(date) {
           :loading="loading"
           dataKey="id"
           size="small"
-          :emptyMessage="'No tienes contribuciones asignadas aún.'"
+          :emptyMessage="'No tienes contribuciones asignadas aÃºn.'"
         >
           <Column field="bill" header="Gasto" />
-          <Column header="Fecha límite">
+          <Column header="Fecha lÃ­mite">
             <template #body="{ data }">
               {{ formatDate(data.dueDate) }}
             </template>
@@ -252,7 +253,7 @@ function formatDate(date) {
               <Tag :severity="data.status === 'Pagado' ? 'success' : 'warning'" :value="data.status" />
             </template>
           </Column>
-          <Column header="Último movimiento">
+          <Column header="Ãšltimo movimiento">
             <template #body="{ data }">
               {{ formatDate(data.lastPayment) }}
             </template>
@@ -271,7 +272,7 @@ function formatDate(date) {
           size="small"
           :rows="5"
           :paginator="historyRows.length > 5"
-          :emptyMessage="'Aún no registras pagos propios.'"
+          :emptyMessage="'AÃºn no registras pagos propios.'"
         >
           <Column field="bill" header="Concepto" />
           <Column header="Monto">
@@ -385,3 +386,5 @@ function formatDate(date) {
   }
 }
 </style>
+
+

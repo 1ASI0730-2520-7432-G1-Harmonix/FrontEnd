@@ -1,20 +1,15 @@
-﻿import axios from 'axios';
-
-export const http = axios.create({
-    baseURL: `${import.meta.env.VITE_API_BASE_URL}`,
-    withCredentials: false
-});
+import http from '@/shared/services/http.instance.js';
 
 const get = async (url) => (await http.get(url)).data ?? [];
 
 export const HouseholdAPI = {
-    users: () => get('/users'),
-    membersByHousehold: (householdId) => get(`/householdMember?householdId=${householdId}`),
-    memberContributions: () => get('/memberContributions'),
-    billsByHousehold: (householdId) => get(`/bills?householdId=${householdId}`),
-    contributionsByHousehold: (householdId) => get(`/contributions?householdId=${householdId}`),
-    householdById: (id) => get(`/households?id=${id}`),
-    householdsByRepresentative: (representativeId) => get(`/households?representativeId=${representativeId}`),
+  users: () => get('/user'),
+  membersByHousehold: (householdId) => get(`/household_member/household/${encodeURIComponent(householdId)}`),
+  memberContributions: () => get('/member_contribution'),
+  billsByHousehold: (householdId) => get(`/bills/byHousehold/${encodeURIComponent(householdId)}`),
+  contributionsByHousehold: (householdId) => get(`/contribution/byhouseholdid/${encodeURIComponent(householdId)}`),
+  householdById: (id) => get(`/house_hold/${encodeURIComponent(id)}`),
+  householdsByRepresentative: (representativeId) => get(`/house_hold/representative/${encodeURIComponent(representativeId)}`),
 
-    createMember: async (payload) => (await http.post('/householdMember', payload)).data
+  createMember: async (payload) => (await http.post('/household_member', payload)).data
 };

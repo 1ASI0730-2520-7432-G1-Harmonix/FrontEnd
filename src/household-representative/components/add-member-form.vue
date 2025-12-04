@@ -53,6 +53,8 @@ const householdOptions = computed(() =>
   }))
 );
 
+const hasHouseholdSelectorAbove = computed(() => !!props.householdId);
+
 async function loadHouseholds() {
   if (!representativeId.value) {
     availableHouseholds.value = [];
@@ -63,6 +65,8 @@ async function loadHouseholds() {
   try {
     const list = await HouseholdService.getHouseholds(representativeId.value);
     availableHouseholds.value = Array.isArray(list) ? list : [];
+    // En cuanto cargan los hogares, forzamos una selección válida
+    syncHouseholdSelection(true);
   } catch (error) {
     console.error('Error loading households for selector:', error);
     availableHouseholds.value = [];
@@ -147,6 +151,11 @@ function isValidEmail(email) {
 
 async function handleSubmit() {
   if (!validateForm()) {
+    return;
+  }
+
+  if (!formData.value.householdId?.trim()) {
+    errors.value.householdId = t('representativeMembers.addMember.validation.householdRequired');
     return;
   }
 
@@ -248,23 +257,30 @@ function handleCancel() {
 
       <div class="field">
         <label for="householdId" class="field-label">{{ t('representativeMembers.addMember.fields.household') }}</label>
-        <pv-dropdown
-          id="householdId"
-          v-model="formData.householdId"
-          :options="householdOptions"
-          option-label="label"
-          option-value="value"
-          :placeholder="t('representativeMembers.addMember.placeholders.household')"
-          class="form-input"
-          :class="{ 'p-invalid': errors.householdId }"
-          :disabled="loading || !householdOptions.length"
-          :loading="householdsLoading"
-          filter
-          :empty-message="householdsLoading ? t('representativeMembers.addMember.emptyLoading') : t('representativeMembers.addMember.emptyOptions')"
-        />
-        <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
-          {{ t('representativeMembers.addMember.helper.noHouseholds') }}
-        </small>
+        <template v-if="!hasHouseholdSelectorAbove && (householdOptions.length > 1 || !formData.householdId)">
+          <pv-dropdown
+            id="householdId"
+            v-model="formData.householdId"
+            :options="householdOptions"
+            option-label="label"
+            option-value="value"
+            :placeholder="t('representativeMembers.addMember.placeholders.household')"
+            class="form-input"
+            :class="{ 'p-invalid': errors.householdId }"
+            :disabled="loading || !householdOptions.length"
+            :loading="householdsLoading"
+            filter
+            :empty-message="householdsLoading ? t('representativeMembers.addMember.emptyLoading') : t('representativeMembers.addMember.emptyOptions')"
+          />
+          <small v-if="!householdOptions.length && !householdsLoading" class="helper-message">
+            {{ t('representativeMembers.addMember.helper.noHouseholds') }}
+          </small>
+        </template>
+        <template v-else>
+          <div class="readonly-pill">
+            {{ householdOptions.find(opt => opt.value === formData.householdId)?.label || formData.householdId || t('representativeMembers.addMember.helper.noHouseholds') }}
+          </div>
+        </template>
         <small v-if="errors.householdId" class="error-message">{{ errors.householdId }}</small>
       </div>
 
