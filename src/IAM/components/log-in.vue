@@ -36,6 +36,7 @@ async function signIn() {
   try {
     // Use SignIn endpoint
     const signInResponse = await userStore.signInUser(signInData);
+    console.log("SignInResponse",signInResponse.id);
     //Fetch User Data
     const userData = await userStore.loadUserById(signInResponse.id, signInResponse.token);
 
@@ -57,8 +58,10 @@ async function signIn() {
     }
 
     // Redirect based on role
-    if (userData.role === 'Representative') {
+    if (userData.role.toString() === 'representative') {
+      console.log("About to push route.....")
       await router.push({name: 'representative-dashboard'});
+      console.log("Route push finished....");
     } else {
       await router.push({name: 'member-dashboard'});
     }

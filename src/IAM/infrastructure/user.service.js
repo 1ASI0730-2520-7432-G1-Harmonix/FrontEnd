@@ -20,7 +20,7 @@ export class UserService {
             const dto = await UserApi.signIn(userData);
             if(!dto) throw new Error(`Wasn't able to sign in user with given credentials ${userData}`);
             //Check data returned
-            console.log(dto);
+            console.log("DTO: ", dto);
             return dto;
         }catch(error) {
             console.error("Error signing in user: ", error);
@@ -36,6 +36,7 @@ export class UserService {
         try {
             const dto = await UserApi.getById(id, token);
             if(!dto) throw new Error(`Wasnt able to find a user with id ${id}`);
+            console.log("ById DTO: ", dto);
             return toEntity(dto);
         }catch (error){
             console.error('Error fetching User: ',error);

@@ -1,7 +1,7 @@
 ﻿export class User {
     constructor(data = {}) {
         this.id = data.id || Date.now();
-        this.name = data.name || '';
+        this.personName = data.personName || '';
         this.email = data.email || '';
         this.password = data.password || '';
         this.role = data.role || '';
@@ -11,7 +11,7 @@
 
     validate(){
         const errors = {};
-        if(!this.name) errors.name = 'Name is required';
+        if(!this.personName) errors.personName = 'Name is required';
         if(!this.email) errors.email = 'Email is required';
         if(!this.password) errors.password = 'Password is required';
         if(!this.role) errors.role = 'Role is required';

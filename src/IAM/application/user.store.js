@@ -39,6 +39,7 @@ export const useUserStore = defineStore('user', () => {
         loading.value = true
         try {
             current.value = await UserService.getUserById(id, token)
+            console.log("Current User: ",current.value)
             return current.value
         } catch (err) {
             errors.value.push(normalizeError(err))

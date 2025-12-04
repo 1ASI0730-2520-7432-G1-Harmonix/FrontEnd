@@ -1,15 +1,15 @@
 ﻿import {User} from "@/IAM/domain/model/user.entity.js";
 
-export function toEntity(entity) {
+export function toEntity(dto) {
     if(!dto || typeof dto !== 'object')  return new User();
     return new User({
-        id: entity.id,
-        name: entity.name,
-        email: entity.email,
-        password: entity.password,
-        role: entity.role,
-        status: entity.status,
-        householdId: entity.householdId
+        id: dto.id,
+        personName: dto.personName,
+        email: dto.email,
+        password: dto.password,
+        role: dto.role.toLowerCase(),
+        status: dto.status,
+        householdId: dto.householdId
     });
 }
 
@@ -18,7 +18,7 @@ export function toDTO(entity) {
     if(!entity) return {};
     return {
         id: entity.id,
-        name: (entity.name || '').trim(),
+        personName: (entity.personName || '').trim(),
         email: (entity.email || '').trim(),
         password: (entity.password || '').trim(),
         role: (entity.role || '').trim(),

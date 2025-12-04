@@ -47,7 +47,7 @@ async function signUp() {
   success.value = '';
   generatedHouseholdId.value = '';
 
-  if (!name.value.trim()) return (error.value = 'Please enter your name.');
+  if (!name.value) return (error.value = 'Please enter your name.');
   if (!validateEmail(email.value)) return (error.value = 'Enter a valid email address.');
   if (password.value.length < 8) return (error.value = 'Password must be at least 8 characters.');
   if (password.value !== confirm.value) return (error.value = 'Passwords do not match.');

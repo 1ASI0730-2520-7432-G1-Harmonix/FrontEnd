@@ -17,12 +17,13 @@ export const UserApi={
     },
 
     async getById(id, token) {
-        const res = await httpInstance.get(`${resourceEndpoint}/user/user/${id}`,{
+        const res = await httpInstance.get(`${resourceEndpoint}/user/${id}`,{
             headers: {
                 Authorization: `Bearer ${token}`,
             }
         });
         const arr = res.data || {};
+        console.log("ByIdResource Data",res);
         return Array.isArray(arr) ? arr[0] : arr;
     },
 
