@@ -307,7 +307,7 @@ async function deleteAccount() {
 
     if (householdId) {
 
-      const { data } = await httpInstance.get(`/users?householdId=${encodeURIComponent(householdId)}&role=member`)
+      const { data } = await httpInstance.get(`/user?householdId=${encodeURIComponent(householdId)}&role=member`)
 
       const members = Array.isArray(data) ? data : []
 
@@ -315,7 +315,7 @@ async function deleteAccount() {
 
         members.map(member =>
 
-          httpInstance.patch(`/users/${member.id}`, { status: 'inactive' })
+          httpInstance.patch(`/user/user/${member.id}`, { status: 'inactive' })
 
         )
 
@@ -325,7 +325,7 @@ async function deleteAccount() {
 
 
 
-    await httpInstance.delete(`/users/${userId}`)
+    await httpInstance.delete(`/user/user/${userId}`)
 
     localStorage.removeItem('user')
 

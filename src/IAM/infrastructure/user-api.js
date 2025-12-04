@@ -1,6 +1,6 @@
 ﻿import httpInstance from "@/shared/services/http.instance.js";
 
-const resourceEndpoint = import.meta.env.VITE_USERS_ENDPOINT_PATH;
+const resourceEndpoint = "/user";
 export const UserApi={
     async create(dto) {
         const res = await httpInstance.post(`${resourceEndpoint}`, dto);
@@ -8,7 +8,7 @@ export const UserApi={
     },
 
     async getById(id) {
-        const res = await httpInstance.get(`${resourceEndpoint}/${id}`);
+        const res = await httpInstance.get(`${resourceEndpoint}/user/${id}`);
         const arr = res.data || {};
         return Array.isArray(arr) ? arr[0] : arr;
     },
@@ -20,12 +20,12 @@ export const UserApi={
     },
 
     async update(id, dto) {
-        const res = await httpInstance.put(`${resourceEndpoint}/${id}`, dto);
+        const res = await httpInstance.put(`${resourceEndpoint}/user/${id}`, dto);
         return res.data;
     },
 
     async remove(id) {
-        await httpInstance.delete(`${resourceEndpoint}/${id}`);
+        await httpInstance.delete(`${resourceEndpoint}/user/${id}`);
     }
 
 

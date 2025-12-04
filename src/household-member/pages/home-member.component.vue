@@ -32,7 +32,7 @@ onMounted(async () => {
 
 async function loadHouseholdInfo() {
   try {
-    const response = await httpInstance.get(`/users?householdId=${user.value.householdId}&role=representative`);
+    const response = await httpInstance.get(`/user?householdId=${user.value.householdId}&role=representative`);
     if (response.data.length > 0) {
       representative.value = response.data[0];
     }

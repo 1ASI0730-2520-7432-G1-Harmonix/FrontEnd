@@ -1,6 +1,7 @@
 export class Household {
   constructor(data = {}) {
-    this.id = data.id || `HOG-${Date.now()}`;
+    // Leave id empty by default; backend will assign HH{ticks} when creating
+    this.id = data.id || '';
     this.name = data.name || '';
     this.description = data.description || '';
     this.memberCount = data.memberCount || 1;
@@ -27,7 +28,7 @@ export class Household {
   }
 
   static generateHouseholdId() {
-    return 'H' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `HH${Date.now()}`;
   }
 
   validate() {

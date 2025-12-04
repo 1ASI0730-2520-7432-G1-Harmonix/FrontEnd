@@ -6,31 +6,23 @@
 import httpInstance from '@/shared/services/http.instance';
 
 class MemberDataFetcher {
-  async fetchUsers(householdId) {
-    return await httpInstance.get(`/users?householdId=${householdId}`);
-  }
-  
-  async fetchContributions() {
-    return await httpInstance.get('/memberContributions');
-  }
-  
   async fetchHouseholdMembers(householdId) {
-    return await httpInstance.get(`/householdMember?householdId=${householdId}`);
+    return await httpInstance.get(`/household_member/household/${householdId}/detailed`);
   }
 }
 
 class MemberDataProcessor {
-  calculateTotalContributions(memberId, contributions) {
-    return contributions
-      .filter(c => c.memberId === memberId)
-      .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-  }
-  
-  mapUserToMember(user, householdMember, totalContributed) {
+  mapMember(member) {
     return {
-      ...user,
-      householdMemberId: householdMember?.id,
-      totalContributed: totalContributed.toFixed(2)
+      id: member.householdMemberId || member.id || 0,
+      userId: member.userId || 0,
+      name: member.name || '',
+      email: member.email || '',
+      role: member.role || 'member',
+      status: member.status || 'Inactive',
+      totalContributed: member.totalContributed ?? 0,
+      isRepresentative: member.isRepresentative ?? false,
+      joinedAt: member.joinedAt || null
     };
   }
 }
@@ -51,30 +43,16 @@ class MemberAssembler {
     this.validator = new MemberDataValidator();
   }
   
-  async assembleHouseholdMembers() {
+  async assembleHouseholdMembers(householdId) {
     const userData = JSON.parse(localStorage.getItem('user'));
-    this.validator.validateHouseholdData(userData);
+    // allow explicit householdId selection; fallback to userData.householdId
+    const targetHousehold = householdId || userData?.householdId;
+    this.validator.validateHouseholdData({ householdId: targetHousehold });
 
-    const [usersResponse, contributionsResponse, householdMembersResponse] = await Promise.all([
-      this.fetcher.fetchUsers(userData.householdId),
-      this.fetcher.fetchContributions(),
-      this.fetcher.fetchHouseholdMembers(userData.householdId)
-    ]);
+    const householdMembersResponse = await this.fetcher.fetchHouseholdMembers(targetHousehold);
+    const householdMembers = householdMembersResponse.data || [];
 
-    const users = usersResponse.data;
-    const allContributions = contributionsResponse.data;
-    const householdMembers = householdMembersResponse.data;
-    const memberUsers = users.filter(user => user.role === 'member');
-    
-    return memberUsers.map(user => {
-      const householdMember = householdMembers.find(hm => hm.userId === user.id);
-      const totalContributed = this.processor.calculateTotalContributions(
-        householdMember?.id, 
-        allContributions
-      );
-      
-      return this.processor.mapUserToMember(user, householdMember, totalContributed);
-    });
+    return householdMembers.map(member => this.processor.mapMember(member));
   }
 }
 
@@ -101,9 +79,9 @@ class MemberPipeline {
     this.filterProcessor = new MemberFilterProcessor();
   }
   
-  async processMemberData(filters = null) {
+  async processMemberData(filters = null, householdId = null) {
     try {
-      const members = await this.assembler.assembleHouseholdMembers();
+      const members = await this.assembler.assembleHouseholdMembers(householdId);
 
       if (filters) {
         return this.filterProcessor.applyFilters(members, filters);

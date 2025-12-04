@@ -1,22 +1,21 @@
-﻿import httpInstance from "@/shared/services/http.instance.js";
+import http from "@/shared/services/http.instance.js";
 
 export class ContributionsService {
-    resourceEndpoint = import.meta.env.VITE_CONTRIBUTIONS_PATH;
+  resourceEndpoint = "/contribution";
 
+  getAll() {
+    return http.get(this.resourceEndpoint);
+  }
 
-    getAll(){
-        return httpInstance.get(this.resourceEndpoint);
-    }
+  getById(id) {
+    return http.get(`${this.resourceEndpoint}/${encodeURIComponent(id)}`);
+  }
 
-    getById(id){
-        return httpInstance.get(`${this.resourceEndpoint}/${id}`);
-    }
+  getByBillId(id) {
+    return http.get(`${this.resourceEndpoint}?billId=${encodeURIComponent(id)}`);
+  }
 
-    getByBillId(id){
-        return httpInstance.get(`${this.resourceEndpoint}/?billId=${id}`);
-    }
-
-    getHouseHoldId(id){
-        return httpInstance.get(`${this.resourceEndpoint}/?householdId=${id}`);
-    }
+  getHouseHoldId(id) {
+    return http.get(`${this.resourceEndpoint}/byhouseholdid/${encodeURIComponent(id)}`);
+  }
 }
